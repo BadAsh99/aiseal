@@ -33,6 +33,11 @@ function detectLLM01(prompt: string): Finding {
     /disregard\s+(your|all|previous)/i,
     /act\s+as\s+(if\s+you\s+are|a)\s+/i,
     /DAN\b/,
+    // Indirect and multi-stage injection
+    /when\s+you\s+read\s+a\s+document\s+that\s+contains/i,
+    /if\s+any\s+tool\s+returns/i,
+    /the\s+next\s+time\s+you\s+are\s+called/i,
+    /store\s+this\s+instruction\s+for\s+later/i,
   ];
 
   const matched = patterns.find((p) => p.test(prompt));
@@ -96,6 +101,22 @@ function detectLLM06(prompt: string): Finding {
     /rm\s+-rf/i,
     /sudo\s+/i,
     /shell_exec|exec\(|system\(/i,
+    // Agentic / MCP tool abuse
+    /call\s+this\s+tool\s+with\s+admin/i,
+    /use\s+the\s+file\s+(system\s+)?tool\s+to/i,
+    /execute\s+this\s+mcp\s+tool/i,
+    // Multi-agent hijack
+    /tell\s+the\s+other\s+agent\s+to/i,
+    /instruct\s+the\s+sub-?agent/i,
+    /relay\s+this\s+to\s+the\s+orchestrator/i,
+    // Memory poisoning
+    /add\s+this\s+to\s+your\s+memory/i,
+    /remember\s+for\s+all\s+future/i,
+    /update\s+your\s+persistent\s+memory/i,
+    // MCP server abuse
+    /connect\s+to\s+mcp\s+server/i,
+    /list\s+available\s+mcp\s+tools/i,
+    /invoke\s+mcp/i,
   ];
 
   const matched = patterns.find((p) => p.test(prompt));
@@ -200,6 +221,39 @@ function detectLLM05(prompt: string): Finding {
   };
 }
 
+function detectLLM04(prompt: string): Finding {
+  const patterns = [
+    // Context injection
+    { re: /ignore\s+the\s+retrieved\s+context/i,                   label: "retrieved context suppression" },
+    { re: /the\s+real\s+answer\s+is\s+not\s+in\s+the\s+documents/i, label: "document authority bypass" },
+    // Retrieval manipulation
+    { re: /search\s+for\s+documents?\s+that\s+say/i,               label: "retrieval steering" },
+    { re: /only\s+use\s+documents?\s+from/i,                       label: "source restriction manipulation" },
+    // Indirect injection via documents
+    { re: /when\s+this\s+document\s+is\s+(loaded|retrieved|read)/i, label: "document-borne payload trigger" },
+    { re: /embedded\s+instruction\s+in\s+(the\s+)?(document|file|page)/i, label: "embedded instruction delivery" },
+    { re: /payload\s+(in|inside|within)\s+(the\s+)?(document|file|pdf|page)/i, label: "document payload delivery" },
+  ];
+
+  const matched = patterns.find(({ re }) => re.test(prompt));
+  if (matched) {
+    return {
+      category: "Data and Model Poisoning",
+      code: "LLM04",
+      status: "fail",
+      severity: "high",
+      detail: `RAG poisoning pattern detected: ${matched.label}. Prompt attempts to corrupt or manipulate retrieval-augmented context.`,
+    };
+  }
+  return {
+    category: "Data and Model Poisoning",
+    code: "LLM04",
+    status: "pass",
+    severity: "info",
+    detail: "No RAG poisoning or context injection patterns detected.",
+  };
+}
+
 function passthrough(code: string, name: string): Finding {
   return {
     category: name,
@@ -237,7 +291,7 @@ export async function POST(req: NextRequest) {
     detectLLM01(prompt),
     detectLLM02(prompt),
     passthrough("LLM03", "Supply Chain Vulnerabilities"),
-    passthrough("LLM04", "Data and Model Poisoning"),
+    detectLLM04(prompt),
     detectLLM05(prompt),
     detectLLM06(prompt),
     detectLLM07(prompt),
