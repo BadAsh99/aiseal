@@ -147,22 +147,48 @@ function detectLLM07(prompt: string): Finding {
 }
 
 function detectLLM05(prompt: string): Finding {
-  const patterns = [
-    /<script\b/i,
-    /javascript:/i,
-    /on\w+\s*=\s*["']/i,
-    /\beval\s*\(/i,
-    /innerHTML\s*=/i,
+  // XSS / unsafe rendering patterns
+  const xssPatterns = [
+    { re: /<script\b/i,              label: "script tag injection" },
+    { re: /javascript:/i,            label: "javascript: URI" },
+    { re: /on\w+\s*=\s*["']/i,      label: "inline event handler" },
+    { re: /\beval\s*\(/i,           label: "eval() call" },
+    { re: /innerHTML\s*=/i,         label: "innerHTML assignment" },
   ];
 
-  const matched = patterns.find((p) => p.test(prompt));
-  if (matched) {
+  // Malicious code output patterns — obfuscated/packed payload delivery
+  const maliciousCodePatterns = [
+    { re: /exec\s*\(\s*(base64|zlib|decompress|decode)/i,        label: "exec() on encoded payload — packed malware pattern" },
+    { re: /base64[._]b64decode.*exec/is,                          label: "base64 decode + exec — fileless payload pattern" },
+    { re: /zlib\.decompress.*base64/is,                           label: "zlib+base64 decompression — packer combo" },
+    { re: /importlib.*_bootstrap.*exec/is,                        label: "importlib bootstrap exec — AV evasion technique" },
+    { re: /powershell.*-enc(odedcommand)?\s+[A-Za-z0-9+/]{20,}/i, label: "PowerShell encoded command — LOtL technique" },
+    { re: /certutil.*-urlcache.*-f/i,                             label: "certutil file download — LOtL dropper" },
+    { re: /\bload_config\b.*exec\s*\(/is,                         label: "config loader masking exec() — obfuscated dropper" },
+    { re: /subprocess\.(call|run|Popen).*shell\s*=\s*True/i,     label: "shell=True subprocess — command injection risk" },
+    { re: /os\.system\s*\(|os\.popen\s*\(/i,                     label: "os.system/popen — arbitrary command execution" },
+    { re: /__import__\s*\(\s*['"]os['"]\s*\)/i,                  label: "__import__('os') — obfuscated OS access" },
+  ];
+
+  const xssMatch = xssPatterns.find(({ re }) => re.test(prompt));
+  const codeMatch = maliciousCodePatterns.find(({ re }) => re.test(prompt));
+
+  if (codeMatch) {
+    return {
+      category: "Improper Output Handling",
+      code: "LLM05",
+      status: "fail",
+      severity: "critical",
+      detail: `Malicious code output pattern detected: ${codeMatch.label}. LLM may be generating or assisting with obfuscated/packed malware.`,
+    };
+  }
+  if (xssMatch) {
     return {
       category: "Improper Output Handling",
       code: "LLM05",
       status: "warning",
       severity: "medium",
-      detail: "Prompt contains patterns that may trigger unsafe output (XSS/injection in downstream rendering).",
+      detail: `Unsafe output pattern detected: ${xssMatch.label}. May trigger XSS or injection in downstream rendering.`,
     };
   }
   return {
