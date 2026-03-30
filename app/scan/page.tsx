@@ -320,7 +320,7 @@ function exportCSV(result: ScanResult, prompt: string) {
   download(new Blob([csv], { type: "text/csv" }), `aiseal-trustscan-${Date.now()}.csv`);
 }
 
-async function exportPDF(result: ScanResult, prompt: string, scenario: string | null) {
+async function exportPDF(result: ScanResult, prompt: string, scenario: string | null, nineNarrative?: string) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const W = 210;
@@ -495,6 +495,31 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
     });
   }
 
+  // ── NINE Narrative ──
+  if (nineNarrative) {
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(168, 85, 247);
+    doc.text("NINE EXECUTIVE ANALYSIS", MARGIN, y);
+    doc.setFontSize(6.5);
+    doc.setTextColor(107, 114, 128);
+    doc.text("Neural Intelligence Node Engine", MARGIN + 52, y);
+    y += 5;
+    doc.setFillColor(20, 10, 30);
+    const narrativeLines = doc.splitTextToSize(nineNarrative, COL - 8);
+    const blockH = narrativeLines.length * 4.5 + 8;
+    doc.roundedRect(MARGIN, y, COL, blockH, 2, 2, "F");
+    doc.setDrawColor(168, 85, 247, 0.3);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(MARGIN, y, COL, blockH, 2, 2, "S");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(200, 180, 220);
+    doc.text(narrativeLines, MARGIN + 4, y + 6);
+    y += blockH + 6;
+  }
+
   // ── Footer ──
   doc.setFillColor(10, 10, 10);
   doc.rect(0, 285, W, 12, "F");
@@ -516,11 +541,13 @@ export default function ScanPage() {
   const [scannedPrompt, setScannedPrompt] = useState("");
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [runningScenario, setRunningScenario] = useState<string | null>(null);
+  const [nineNarrative, setNineNarrative] = useState<string | null>(null);
 
   async function handleScan() {
     if (!prompt.trim()) return;
     setLoading(true);
     setRunningScenario(activeScenario);
+    setNineNarrative(null);
     setError(null);
     try {
       const res = await fetch("/api/scan", {
@@ -746,7 +773,7 @@ export default function ScanPage() {
                     {[
                       { label: "JSON", fn: () => exportJSON(result, scannedPrompt) },
                       { label: "CSV",  fn: () => exportCSV(result, scannedPrompt) },
-                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario) },
+                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario, nineNarrative ?? undefined) },
                     ].map(({ label, fn }) => (
                       <button
                         key={label}
@@ -838,9 +865,16 @@ export default function ScanPage() {
               </div>
             </div>
 
-            <p className="text-center text-xs mt-4" style={{ color: "#374151" }}>
-              Static pattern analysis only. Full dynamic testing available with AISeal Enterprise.
-            </p>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <span className="text-xs" style={{ color: "#374151" }}>Pattern analysis by</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.08)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>
+                NINE
+              </span>
+              <span className="text-xs" style={{ color: "#374151" }}>· Neural Intelligence Node Engine</span>
+            </div>
+
+            {/* NINE Narrative */}
+            <NineAnalysis result={result} scenario={runningScenario} onNarrative={setNineNarrative} />
           </div>
         )}
 
@@ -907,6 +941,85 @@ export default function ScanPage() {
             />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; scenario: string | null; onNarrative?: (n: string) => void }) {
+  const [narrative, setNarrative] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [requested, setRequested] = useState(false);
+
+  async function analyze() {
+    setLoading(true);
+    setRequested(true);
+    try {
+      const res = await fetch("/api/nine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          score: result.score,
+          findings: result.findings,
+          model: result.model,
+          scenario,
+        }),
+      });
+      const data = await res.json();
+      const text = data.narrative || null;
+      setNarrative(text);
+      if (text && onNarrative) onNarrative(text);
+    } catch {
+      setNarrative("NINE analysis unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(168,85,247,0.25)" }}>
+      <div
+        className="px-5 py-3 flex items-center justify-between"
+        style={{ background: "rgba(168,85,247,0.06)", borderBottom: "1px solid rgba(168,85,247,0.15)" }}
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }}
+          />
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>
+            NINE Analysis
+          </span>
+          <span className="text-xs" style={{ color: "#4b5563" }}>· Neural Intelligence Node Engine</span>
+        </div>
+        {!requested && (
+          <button
+            onClick={analyze}
+            className="text-xs font-semibold px-3 py-1.5 rounded"
+            style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}
+          >
+            Ask NINE
+          </button>
+        )}
+      </div>
+
+      <div className="px-5 py-4" style={{ background: "#0a0a0a" }}>
+        {!requested && (
+          <p className="text-sm" style={{ color: "#374151" }}>
+            Ask NINE for an executive risk narrative on these findings.
+          </p>
+        )}
+        {loading && (
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
+            <span className="text-sm" style={{ color: "#6b7280" }}>NINE is analyzing...</span>
+          </div>
+        )}
+        {narrative && !loading && (
+          <p className="text-sm leading-relaxed" style={{ color: "#d1d5db", lineHeight: "1.7" }}>
+            {narrative}
+          </p>
+        )}
       </div>
     </div>
   );
