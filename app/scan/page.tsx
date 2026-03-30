@@ -1077,7 +1077,7 @@ export default function ScanPage() {
             </div>
 
             {/* NINE Narrative */}
-            <NineAnalysis result={result} scenario={runningScenario} onNarrative={setNineNarrative} />
+            <NineAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setNineNarrative} />
           </div>
         )}
 
@@ -1149,10 +1149,18 @@ export default function ScanPage() {
   );
 }
 
+interface FollowUp {
+  role: "user" | "assistant";
+  content: string;
+}
+
 function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; scenario: string | null; onNarrative?: (n: string) => void }) {
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [followInput, setFollowInput] = useState("");
+  const [followLoading, setFollowLoading] = useState(false);
 
   async function analyze() {
     setLoading(true);
@@ -1161,12 +1169,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       const res = await fetch("/api/nine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          score: result.score,
-          findings: result.findings,
-          model: result.model,
-          scenario,
-        }),
+        body: JSON.stringify({ score: result.score, findings: result.findings, model: result.model, scenario }),
       });
       const data = await res.json();
       const text = data.narrative || null;
@@ -1179,6 +1182,42 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
     }
   }
 
+  async function askFollowUp() {
+    const q = followInput.trim();
+    if (!q || followLoading) return;
+
+    const fails = result.findings
+      .filter((f) => f.status === "fail")
+      .map((f) => `${f.code} ${f.severity.toUpperCase()}: ${f.detail}`)
+      .join("; ");
+
+    const contextMsg = `TrustScan context — Score: ${result.score}/100, Model: ${result.model}${scenario ? `, Scenario: ${scenario}` : ""}. Key findings: ${fails || "All clear"}. NINE's initial analysis: ${narrative || "N/A"}`;
+
+    const updated: FollowUp[] = [...followUps, { role: "user", content: q }];
+    setFollowUps(updated);
+    setFollowInput("");
+    setFollowLoading(true);
+
+    try {
+      const messages = [
+        { role: "user" as const, content: contextMsg },
+        { role: "assistant" as const, content: narrative || "" },
+        ...updated,
+      ];
+      const res = await fetch("/api/nine/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      });
+      const data = await res.json();
+      setFollowUps([...updated, { role: "assistant", content: data.reply || "NINE unavailable." }]);
+    } catch {
+      setFollowUps([...updated, { role: "assistant", content: "NINE unavailable." }]);
+    } finally {
+      setFollowLoading(false);
+    }
+  }
+
   return (
     <div className="mt-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(168,85,247,0.25)" }}>
       <div
@@ -1186,13 +1225,8 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
         style={{ background: "rgba(168,85,247,0.06)", borderBottom: "1px solid rgba(168,85,247,0.15)" }}
       >
         <div className="flex items-center gap-2">
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }}
-          />
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>
-            NINE Analysis
-          </span>
+          <span className="w-2 h-2 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>NINE Analysis</span>
           <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Neural Intelligence Node Engine</span>
         </div>
         {!requested && (
@@ -1218,10 +1252,73 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
             <span className="text-sm" style={{ color: "var(--text-muted)" }}>NINE is analyzing...</span>
           </div>
         )}
+
         {narrative && !loading && (
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", lineHeight: "1.7" }}>
-            {narrative}
-          </p>
+          <>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-secondary)", lineHeight: "1.7" }}>
+              {narrative}
+            </p>
+
+            {/* Follow-up thread */}
+            {followUps.length > 0 && (
+              <div className="flex flex-col gap-3 mb-4 pt-3" style={{ borderTop: "1px solid rgba(168,85,247,0.1)" }}>
+                {followUps.map((m, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                    <div
+                      className="text-xs px-3 py-2 rounded-lg"
+                      style={{
+                        maxWidth: "85%",
+                        background: m.role === "user" ? "rgba(168,85,247,0.12)" : "var(--bg-surface)",
+                        border: m.role === "user" ? "1px solid rgba(168,85,247,0.2)" : "1px solid var(--border-mid)",
+                        color: m.role === "user" ? "#d8b4fe" : "var(--text-primary)",
+                        lineHeight: "1.5",
+                      }}
+                    >
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {followLoading && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", animation: "pulse 1s infinite" }} />
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>NINE is thinking...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Follow-up input */}
+            <div className="flex gap-2 mt-2">
+              <input
+                value={followInput}
+                onChange={(e) => setFollowInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowUp(); } }}
+                placeholder="Ask NINE a follow-up question about these findings..."
+                disabled={followLoading}
+                className="flex-1 text-xs px-3 py-2 rounded-lg outline-none"
+                style={{
+                  background: "var(--bg-surface)",
+                  border: "1px solid rgba(168,85,247,0.2)",
+                  color: "var(--text-primary)",
+                  fontFamily: "inherit",
+                }}
+              />
+              <button
+                onClick={askFollowUp}
+                disabled={followLoading || !followInput.trim()}
+                className="text-xs font-semibold px-3 py-2 rounded-lg"
+                style={{
+                  background: followInput.trim() && !followLoading ? "rgba(168,85,247,0.15)" : "transparent",
+                  color: "#a855f7",
+                  border: "1px solid rgba(168,85,247,0.3)",
+                  cursor: followInput.trim() && !followLoading ? "pointer" : "not-allowed",
+                  opacity: followInput.trim() && !followLoading ? 1 : 0.4,
+                }}
+              >
+                Ask
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
