@@ -154,11 +154,22 @@ const MODELS = [
   { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
 ];
 
-function scoreColor(score: number, findings?: Finding[]): string {
-  const label = scoreLabel(score, findings);
-  if (label === "HIGH RISK") return "#f85149";
-  if (label === "MEDIUM RISK") return "#f59e0b";
-  return "#00c853";
+function scoreColor(score: number): string {
+  // Smooth gradient: 0=red, 50=amber, 100=green — no hard cutoffs
+  const s = Math.max(0, Math.min(100, score));
+  if (s <= 50) {
+    const t = s / 50;
+    const r = Math.round(248 + (245 - 248) * t);
+    const g = Math.round(81  + (158 - 81)  * t);
+    const b = Math.round(73  + (11  - 73)  * t);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const t = (s - 50) / 50;
+    const r = Math.round(245 + (0   - 245) * t);
+    const g = Math.round(158 + (200 - 158) * t);
+    const b = Math.round(11  + (83  - 11)  * t);
+    return `rgb(${r},${g},${b})`;
+  }
 }
 
 function scoreLabel(score: number, findings?: Finding[]): string {
@@ -203,7 +214,7 @@ function severityBadge(severity: Finding["severity"]) {
 }
 
 function TrustScoreCircle({ score, findings }: { score: number; findings?: Finding[] }) {
-  const color = scoreColor(score, findings);
+  const color = scoreColor(score);
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -992,8 +1003,7 @@ function TestSuite() {
   }
 
   const allSelected = selected.size === RED_TEAM_SCENARIOS.length;
-  const allFindings = results.flatMap((r) => r.findings);
-  const color = avgScore === null ? "#6b7280" : scoreColor(avgScore, allFindings);
+  const color = avgScore === null ? "#6b7280" : scoreColor(avgScore);
 
   return (
     <div className="mt-16 mb-4">
@@ -1082,7 +1092,7 @@ function TestSuite() {
                     <div className="w-2 h-2 rounded-full" style={{ background: "#0080ff", boxShadow: "0 0 6px #0080ff" }} />
                   )}
                   {r.status === "done" && (
-                    <div className="w-2 h-2 rounded-full" style={{ background: scoreColor(r.score, r.findings) }} />
+                    <div className="w-2 h-2 rounded-full" style={{ background: scoreColor(r.score) }} />
                   )}
                   {r.status === "idle" && (
                     <div className="w-2 h-2 rounded-full" style={{ background: "#1f2937" }} />
@@ -1097,10 +1107,10 @@ function TestSuite() {
                 {/* Score + label */}
                 {r.status === "done" && (
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-sm font-bold" style={{ color: scoreColor(r.score, r.findings) }}>{r.score}</span>
+                    <span className="text-sm font-bold" style={{ color: scoreColor(r.score) }}>{r.score}</span>
                     <span
                       className="text-xs font-bold px-2 py-0.5 rounded"
-                      style={{ background: `${scoreColor(r.score, r.findings)}15`, color: scoreColor(r.score, r.findings) }}
+                      style={{ background: `${scoreColor(r.score)}15`, color: scoreColor(r.score) }}
                     >
                       {scoreLabel(r.score, r.findings)}
                     </span>
