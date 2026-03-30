@@ -133,31 +133,31 @@ function CriteriaSection() {
       <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "#00c853" }}>
         Certification Framework
       </p>
-      <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#ededed", letterSpacing: "-0.02em" }}>
+      <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
         What it takes to get certified
       </h2>
-      <p className="text-center text-sm mb-8 max-w-xl mx-auto" style={{ color: "#6b7280" }}>
+      <p className="text-center text-sm mb-8 max-w-xl mx-auto" style={{ color: "var(--text-muted)" }}>
         AISeal Cert is not a score threshold. It is a criteria-based framework — specific OWASP LLM controls that must be met, verified, and renewed annually.
       </p>
 
       {/* Mandatory controls */}
-      <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid #2a2a2a" }}>
-        <div className="px-5 py-3 flex items-center gap-3" style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}>
+      <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid var(--border-mid)" }}>
+        <div className="px-5 py-3 flex items-center gap-3" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}>
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#f85149" }} />
-          <p className="text-sm font-semibold" style={{ color: "#ededed" }}>Mandatory — All Tiers</p>
-          <span className="text-xs ml-auto" style={{ color: "#6b7280" }}>Zero tolerance. Any CRITICAL fail = certification denied.</span>
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mandatory — All Tiers</p>
+          <span className="text-xs ml-auto" style={{ color: "var(--text-muted)" }}>Zero tolerance. Any CRITICAL fail = certification denied.</span>
         </div>
-        <div style={{ background: "#0d0d0d" }}>
+        <div style={{ background: "var(--bg-elevated)" }}>
           {[
             { code: "LLM01", name: "Prompt Injection", reason: "No certification if the AI can be hijacked to override its instructions." },
             { code: "LLM06", name: "Excessive Agency", reason: "No certification if the AI can take unauthorized real-world actions." },
             { code: "LLM07", name: "System Prompt Leakage", reason: "No certification if internal instructions or configuration can be extracted." },
           ].map((c, i, arr) => (
-            <div key={c.code} className="px-5 py-4 flex items-start gap-4" style={{ borderBottom: i < arr.length - 1 ? "1px solid #1a1a1a" : "none" }}>
+            <div key={c.code} className="px-5 py-4 flex items-start gap-4" style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>
               <span className="text-xs font-mono font-bold flex-shrink-0 mt-0.5" style={{ color: "#f85149" }}>{c.code}</span>
               <div>
-                <p className="text-sm font-semibold mb-0.5" style={{ color: "#ededed" }}>{c.name}</p>
-                <p className="text-xs" style={{ color: "#6b7280" }}>{c.reason}</p>
+                <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{c.name}</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>{c.reason}</p>
               </div>
               <span className="ml-auto flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(248,81,73,0.1)", color: "#f85149" }}>REQUIRED</span>
             </div>
@@ -166,23 +166,23 @@ function CriteriaSection() {
       </div>
 
       {/* Conditional controls */}
-      <div className="rounded-xl overflow-hidden mb-8" style={{ border: "1px solid #2a2a2a" }}>
-        <div className="px-5 py-3 flex items-center gap-3" style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}>
+      <div className="rounded-xl overflow-hidden mb-8" style={{ border: "1px solid var(--border-mid)" }}>
+        <div className="px-5 py-3 flex items-center gap-3" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}>
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#f59e0b" }} />
-          <p className="text-sm font-semibold" style={{ color: "#ededed" }}>Conditional — Based on Architecture</p>
-          <span className="text-xs ml-auto" style={{ color: "#6b7280" }}>Required only if applicable to your deployment.</span>
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Conditional — Based on Architecture</p>
+          <span className="text-xs ml-auto" style={{ color: "var(--text-muted)" }}>Required only if applicable to your deployment.</span>
         </div>
-        <div style={{ background: "#0d0d0d" }}>
+        <div style={{ background: "var(--bg-elevated)" }}>
           {[
             { code: "LLM02", name: "Sensitive Data Disclosure", condition: "Required if handling PII, PHI, or financial data." },
             { code: "LLM04", name: "Data & Model Poisoning", condition: "Required if using retrieval-augmented generation (RAG)." },
             { code: "LLM05", name: "Improper Output Handling", condition: "Required if the AI generates code or executable content." },
           ].map((c, i, arr) => (
-            <div key={c.code} className="px-5 py-4 flex items-start gap-4" style={{ borderBottom: i < arr.length - 1 ? "1px solid #1a1a1a" : "none" }}>
+            <div key={c.code} className="px-5 py-4 flex items-start gap-4" style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>
               <span className="text-xs font-mono font-bold flex-shrink-0 mt-0.5" style={{ color: "#f59e0b" }}>{c.code}</span>
               <div>
-                <p className="text-sm font-semibold mb-0.5" style={{ color: "#ededed" }}>{c.name}</p>
-                <p className="text-xs" style={{ color: "#6b7280" }}>{c.condition}</p>
+                <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{c.name}</p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>{c.condition}</p>
               </div>
               <span className="ml-auto flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>CONDITIONAL</span>
             </div>
@@ -193,11 +193,11 @@ function CriteriaSection() {
       {/* Tier cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(Object.entries(TIERS) as [keyof typeof TIERS, typeof TIERS[keyof typeof TIERS]][]).map(([key, tier]) => (
-          <div key={key} className="rounded-xl p-5" style={{ background: "#111111", border: `1px solid ${tier.border}` }}>
+          <div key={key} className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: `1px solid ${tier.border}` }}>
             <TierBadge tier={key} />
             <p className="text-3xl font-bold mt-3 mb-0.5" style={{ color: tier.color }}>{tier.scoreMin}+</p>
-            <p className="text-xs mb-3" style={{ color: "#6b7280" }}>Minimum TrustScore</p>
-            <ul className="text-xs flex flex-col gap-1.5" style={{ color: "#6b7280" }}>
+            <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>Minimum TrustScore</p>
+            <ul className="text-xs flex flex-col gap-1.5" style={{ color: "var(--text-muted)" }}>
               <li className="flex gap-2">
                 <span style={{ color: tier.color }}>✓</span>
                 All mandatory controls pass
@@ -236,16 +236,16 @@ export default function RegistryPage() {
   const avgScore = Math.round(REGISTRY.reduce((s, e) => s + e.score, 0) / REGISTRY.length);
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg-base)", minHeight: "100vh" }}>
       <div className="max-w-5xl mx-auto px-6 py-12">
 
         {/* Header */}
         <div className="mb-10">
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#00c853" }}>AISeal Cert</p>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: "#ededed", letterSpacing: "-0.02em" }}>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
             AISeal Certified AI Products
           </h1>
-          <p className="text-base" style={{ color: "#6b7280" }}>Independently verified. Annually recertified.</p>
+          <p className="text-base" style={{ color: "var(--text-muted)" }}>Independently verified. Annually recertified.</p>
         </div>
 
         {/* Certification criteria */}
@@ -261,7 +261,7 @@ export default function RegistryPage() {
         {/* Search */}
         <div className="flex items-center gap-4 mb-6">
           <div className="flex-1 relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: "#6b7280" }}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)" }}>
               <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
               <path d="M20 20L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -271,7 +271,7 @@ export default function RegistryPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by company, product, or category..."
               className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm outline-none"
-              style={{ background: "#111111", border: "1px solid #2a2a2a", color: "#ededed" }}
+              style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)", color: "var(--text-primary)" }}
             />
           </div>
           <a href="/scan" className="flex-shrink-0 px-5 py-2.5 rounded-lg text-sm font-semibold" style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}>
@@ -280,11 +280,11 @@ export default function RegistryPage() {
         </div>
 
         {/* Registry table */}
-        <div className="rounded-xl overflow-hidden mb-8" style={{ border: "1px solid #2a2a2a" }}>
+        <div className="rounded-xl overflow-hidden mb-8" style={{ border: "1px solid var(--border-mid)" }}>
           <div
             className="grid text-xs font-semibold uppercase tracking-wider px-5 py-3"
             style={{
-              background: "#111111", borderBottom: "1px solid #2a2a2a", color: "#6b7280",
+              background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)", color: "var(--text-muted)",
               gridTemplateColumns: "90px 1.2fr 1fr 70px 110px 150px",
               gap: "1rem",
             }}
@@ -297,16 +297,16 @@ export default function RegistryPage() {
             <span>Status / Expiry</span>
           </div>
 
-          <div style={{ background: "#0d0d0d" }}>
+          <div style={{ background: "var(--bg-elevated)" }}>
             {filtered.length === 0 ? (
-              <div className="px-5 py-12 text-center" style={{ color: "#6b7280" }}>No results match your search.</div>
+              <div className="px-5 py-12 text-center" style={{ color: "var(--text-muted)" }}>No results match your search.</div>
             ) : (
               filtered.map((entry, i) => (
                 <div
                   key={entry.id}
                   className="grid items-center px-5 py-4"
                   style={{
-                    borderBottom: i < filtered.length - 1 ? "1px solid #1a1a1a" : "none",
+                    borderBottom: i < filtered.length - 1 ? "1px solid var(--border-subtle)" : "none",
                     gridTemplateColumns: "90px 1.2fr 1fr 70px 110px 150px",
                     gap: "1rem",
                     background: entry.status === "expiring" ? "rgba(245,158,11,0.02)" : "transparent",
@@ -315,11 +315,11 @@ export default function RegistryPage() {
                   <span className="text-xs font-mono" style={{ color: "#0080ff" }}>{entry.id}</span>
 
                   <div>
-                    <p className="text-sm font-semibold" style={{ color: "#ededed" }}>{entry.product}</p>
-                    <p className="text-xs" style={{ color: "#6b7280" }}>{entry.company}</p>
+                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{entry.product}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{entry.company}</p>
                   </div>
 
-                  <span className="text-sm" style={{ color: "#9ca3af" }}>{entry.category}</span>
+                  <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{entry.category}</span>
 
                   <span className="text-base font-bold" style={{ color: scoreColor(entry.score) }}>{entry.score}</span>
 
@@ -327,7 +327,7 @@ export default function RegistryPage() {
 
                   <div>
                     <StatusBadge status={entry.status} />
-                    <p className="text-xs mt-1" style={{ color: "#374151" }}>Expires {formatDate(entry.expiryDate)}</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>Expires {formatDate(entry.expiryDate)}</p>
                   </div>
                 </div>
               ))
@@ -336,7 +336,7 @@ export default function RegistryPage() {
         </div>
 
         {/* Bottom CTA */}
-        <div className="rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between" style={{ background: "#111111", border: "1px solid #2a2a2a" }}>
+        <div className="rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)" }}>
           <div>
             <div className="flex items-center gap-2 mb-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -345,8 +345,8 @@ export default function RegistryPage() {
               </svg>
               <span className="text-xs font-semibold" style={{ color: "#00c853" }}>AISeal Certified</span>
             </div>
-            <h3 className="text-lg font-bold mb-1" style={{ color: "#ededed" }}>Get your AI product certified</h3>
-            <p className="text-sm" style={{ color: "#6b7280" }}>
+            <h3 className="text-lg font-bold mb-1" style={{ color: "var(--text-primary)" }}>Get your AI product certified</h3>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Start with a free TrustScan to see where you stand. AISeal Certification includes a full OWASP LLM Top 10 assessment, a public badge, and annual renewal.
             </p>
           </div>
@@ -362,9 +362,9 @@ export default function RegistryPage() {
 
 function StatCard({ value, label, color }: { value: number | string; label: string; color: string }) {
   return (
-    <div className="rounded-xl p-5" style={{ background: "#111111", border: "1px solid #2a2a2a" }}>
+    <div className="rounded-xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)" }}>
       <p className="text-3xl font-bold mb-1" style={{ color }}>{value}</p>
-      <p className="text-sm" style={{ color: "#6b7280" }}>{label}</p>
+      <p className="text-sm" style={{ color: "var(--text-muted)" }}>{label}</p>
     </div>
   );
 }

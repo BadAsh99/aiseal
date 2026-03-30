@@ -1,29 +1,76 @@
 @import "tailwindcss";
 
+/* ── AISeal Theme Tokens ── */
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* Backgrounds */
+  --bg-base: #0a0a0a;
+  --bg-surface: #111111;
+  --bg-elevated: #0d0d0d;
+  --bg-inset: #0f0f0f;
+
+  /* Borders */
+  --border-subtle: #1a1a1a;
+  --border-mid: #2a2a2a;
+
+  /* Text */
+  --text-primary: #ededed;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-subtle: #4b5563;
+  --text-faint: #374151;
+  --text-ghost: #1f2937;
+
+  /* Special surfaces */
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+  --msg-bg: rgba(255, 255, 255, 0.04);
+  --msg-border: rgba(255, 255, 255, 0.06);
+  --watermark-stroke: rgba(255, 255, 255, 0.04);
+  --watermark-fill-start: rgba(255, 255, 255, 0.05);
+  --watermark-fill-end: rgba(255, 255, 255, 0.005);
+
+  /* Accents — stay the same in both themes */
   --accent: #0080ff;
   --accent-hover: #0066cc;
   --success: #00c853;
   --warning: #f59e0b;
   --danger: #f85149;
-  --surface: #111111;
-  --surface-2: #1a1a1a;
-  --border: #2a2a2a;
-  --muted: #6b7280;
+  --purple: #a855f7;
+}
+
+[data-theme="light"] {
+  --bg-base: #f5f7fa;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f9fafb;
+  --bg-inset: #f0f2f5;
+
+  --border-subtle: #e8eaed;
+  --border-mid: #d1d5db;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #6b7280;
+  --text-subtle: #94a3b8;
+  --text-faint: #cbd5e1;
+  --text-ghost: #e2e8f0;
+
+  --overlay-bg: rgba(0, 0, 0, 0.04);
+  --msg-bg: rgba(0, 0, 0, 0.04);
+  --msg-border: rgba(0, 0, 0, 0.1);
+  --watermark-stroke: rgba(0, 0, 0, 0.05);
+  --watermark-fill-start: rgba(0, 0, 0, 0.05);
+  --watermark-fill-end: rgba(0, 0, 0, 0.01);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-base);
+  color: var(--text-primary);
   font-family: Inter, system-ui, -apple-system, sans-serif;
 }
 

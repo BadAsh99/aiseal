@@ -114,7 +114,7 @@ export default function NineChat() {
             zIndex: 9998,
             width: "clamp(320px, 90vw, 420px)",
             height: "clamp(400px, 60vh, 560px)",
-            background: "#0f0f0f",
+            background: "var(--bg-surface)",
             border: "1px solid rgba(168,85,247,0.25)",
             borderRadius: "12px",
             boxShadow: "0 0 40px rgba(168,85,247,0.12), 0 16px 48px rgba(0,0,0,0.7)",
@@ -149,7 +149,7 @@ export default function NineChat() {
               <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#a855f7", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 NINE
               </span>
-              <span style={{ fontSize: "0.6rem", color: "#4b5563", letterSpacing: "0.05em" }}>
+              <span style={{ fontSize: "0.6rem", color: "var(--text-subtle)", letterSpacing: "0.05em" }}>
                 Neural Intelligence Node Engine
               </span>
             </div>
@@ -160,7 +160,7 @@ export default function NineChat() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#374151",
+                  color: "var(--text-faint)",
                   fontSize: "0.65rem",
                   cursor: "pointer",
                   letterSpacing: "0.05em",
@@ -203,21 +203,21 @@ export default function NineChat() {
                     background:
                       msg.role === "user"
                         ? "rgba(168,85,247,0.15)"
-                        : "rgba(255,255,255,0.04)",
+                        : "var(--msg-bg)",
                     border:
                       msg.role === "user"
                         ? "1px solid rgba(168,85,247,0.25)"
-                        : "1px solid rgba(255,255,255,0.06)",
+                        : "1px solid var(--msg-border)",
                     fontSize: "0.75rem",
                     lineHeight: "1.5",
-                    color: msg.role === "user" ? "#d8b4fe" : "#c9d1d9",
+                    color: msg.role === "user" ? "#d8b4fe" : "var(--text-primary)",
                     whiteSpace: "pre-wrap",
                   }}
                 >
                   {msg.content}
                 </div>
                 {msg.role === "assistant" && i > 0 && (
-                  <span style={{ fontSize: "0.55rem", color: "#1f2937", marginTop: "0.2rem", marginLeft: "0.25rem" }}>
+                  <span style={{ fontSize: "0.55rem", color: "var(--text-ghost)", marginTop: "0.2rem", marginLeft: "0.25rem" }}>
                     NINE · Ghost99RT
                   </span>
                 )}
@@ -230,8 +230,8 @@ export default function NineChat() {
                   style={{
                     padding: "0.55rem 0.85rem",
                     borderRadius: "12px 12px 12px 2px",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.06)",
+                    background: "var(--msg-bg)",
+                    border: "1px solid var(--msg-border)",
                     display: "flex",
                     gap: "4px",
                     alignItems: "center",
@@ -261,7 +261,7 @@ export default function NineChat() {
             style={{
               padding: "0.75rem 1rem",
               borderTop: "1px solid rgba(168,85,247,0.1)",
-              background: "rgba(0,0,0,0.3)",
+              background: "var(--overlay-bg)",
               display: "flex",
               gap: "0.5rem",
               alignItems: "center",
@@ -276,12 +276,12 @@ export default function NineChat() {
               disabled={loading}
               style={{
                 flex: 1,
-                background: "rgba(255,255,255,0.04)",
+                background: "var(--msg-bg)",
                 border: "1px solid rgba(168,85,247,0.2)",
                 borderRadius: "8px",
                 padding: "0.5rem 0.75rem",
                 fontSize: "0.75rem",
-                color: "#ededed",
+                color: "var(--text-primary)",
                 outline: "none",
                 fontFamily: "inherit",
               }}
@@ -294,7 +294,7 @@ export default function NineChat() {
                 border: "1px solid rgba(168,85,247,0.3)",
                 borderRadius: "8px",
                 padding: "0.5rem 0.85rem",
-                color: input.trim() && !loading ? "#fff" : "#6b7280",
+                color: input.trim() && !loading ? "#fff" : "var(--text-muted)",
                 fontSize: "0.7rem",
                 fontWeight: 600,
                 cursor: input.trim() && !loading ? "pointer" : "not-allowed",

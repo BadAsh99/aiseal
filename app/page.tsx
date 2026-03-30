@@ -2,14 +2,14 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div style={{ background: "#0a0a0a" }}>
+    <div style={{ background: "var(--bg-base)" }}>
       {/* Hero */}
       <section
         className="flex flex-col items-center justify-center text-center px-6 py-32"
         style={{
           background:
             "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,128,255,0.12) 0%, transparent 70%)",
-          borderBottom: "1px solid #1a1a1a",
+          borderBottom: "1px solid var(--border-subtle)",
         }}
       >
         <div
@@ -30,7 +30,7 @@ export default function Home() {
         <h1
           className="text-5xl font-bold tracking-tight mb-4 max-w-2xl"
           style={{
-            color: "#ededed",
+            color: "var(--text-primary)",
             letterSpacing: "-0.03em",
             lineHeight: "1.1",
           }}
@@ -40,11 +40,11 @@ export default function Home() {
 
         <p
           className="text-xl mb-10 max-w-xl"
-          style={{ color: "#9ca3af", lineHeight: "1.6" }}
+          style={{ color: "var(--text-secondary)", lineHeight: "1.6" }}
         >
           The first AI security trust and certification platform.
           <br />
-          <span style={{ color: "#ededed" }}>Scan it. Monitor it. Certify it.</span>
+          <span style={{ color: "var(--text-primary)" }}>Scan it. Monitor it. Certify it.</span>
         </p>
 
         <div className="flex items-center gap-4 flex-wrap justify-center">
@@ -60,8 +60,8 @@ export default function Home() {
             className="px-6 py-3 rounded-md font-semibold text-sm"
             style={{
               background: "transparent",
-              color: "#ededed",
-              border: "1px solid #2a2a2a",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-mid)",
               textDecoration: "none",
             }}
           >
@@ -73,18 +73,18 @@ export default function Home() {
       {/* Problem Statement */}
       <section
         className="px-6 py-20 text-center"
-        style={{ borderBottom: "1px solid #1a1a1a" }}
+        style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
         <div className="max-w-3xl mx-auto">
           <h2
             className="text-3xl font-bold mb-4"
-            style={{ color: "#ededed", letterSpacing: "-0.02em" }}
+            style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
           >
             Every company is deploying AI.
             <br />
             <span style={{ color: "#f85149" }}>Nobody can prove it&apos;s safe.</span>
           </h2>
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: "#6b7280" }}>
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: "var(--text-muted)" }}>
             OWASP LLM Top 10 vulnerabilities exist in production AI systems today —
             prompt injection, data exfiltration, excessive agency. Security teams have no
             runtime visibility. Procurement teams have no vendor signal. Compliance teams
@@ -94,7 +94,7 @@ export default function Home() {
       </section>
 
       {/* Product Cards */}
-      <section className="px-6 py-20" style={{ borderBottom: "1px solid #1a1a1a" }}>
+      <section className="px-6 py-20" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="max-w-5xl mx-auto">
           <p
             className="text-xs font-semibold uppercase tracking-widest mb-3 text-center"
@@ -104,7 +104,7 @@ export default function Home() {
           </p>
           <h2
             className="text-3xl font-bold text-center mb-12"
-            style={{ color: "#ededed", letterSpacing: "-0.02em" }}
+            style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
           >
             The complete AI security stack
           </h2>
@@ -162,11 +162,11 @@ export default function Home() {
             </div>
             <h3
               className="text-xl font-bold mb-2"
-              style={{ color: "#ededed" }}
+              style={{ color: "var(--text-primary)" }}
             >
               EU AI Act enforcement begins 2026. Are you ready?
             </h3>
-            <p className="text-sm" style={{ color: "#6b7280" }}>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               High-risk AI systems will require documented risk assessments, transparency
               obligations, and human oversight mechanisms. AISeal Cert maps directly to
               Article 9 compliance requirements.
@@ -216,8 +216,8 @@ function ProductCard({
     <div
       className="rounded-xl p-6 flex flex-col gap-4 transition-all"
       style={{
-        background: "#111111",
-        border: "1px solid #2a2a2a",
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border-mid)",
       }}
     >
       <div
@@ -228,7 +228,7 @@ function ProductCard({
       </div>
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="font-bold text-base" style={{ color: "#ededed" }}>
+          <h3 className="font-bold text-base" style={{ color: "var(--text-primary)" }}>
             {title}
           </h3>
           <span
@@ -242,7 +242,7 @@ function ProductCard({
             {badge}
           </span>
         </div>
-        <p className="text-sm leading-relaxed" style={{ color: "#6b7280" }}>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
           {description}
         </p>
       </div>

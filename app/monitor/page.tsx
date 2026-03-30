@@ -96,7 +96,7 @@ function StatCard({ value, label, color }: { value: string | number; label: stri
   return (
     <div style={{ textAlign: "center" }}>
       <p style={{ fontSize: "1.5rem", fontWeight: 700, color, lineHeight: 1 }}>{value}</p>
-      <p style={{ fontSize: "0.65rem", color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "0.25rem" }}>{label}</p>
+      <p style={{ fontSize: "0.65rem", color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "0.25rem" }}>{label}</p>
     </div>
   );
 }
@@ -121,7 +121,7 @@ export default function MonitorPage() {
   }, []);
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: "var(--bg-base)", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
 
       {/* Ghost99RT watermark */}
       <div style={{
@@ -134,8 +134,8 @@ export default function MonitorPage() {
           letterSpacing: "-0.04em",
           lineHeight: 1,
           color: "transparent",
-          WebkitTextStroke: "1px rgba(255,255,255,0.04)",
-          background: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.005) 100%)",
+          WebkitTextStroke: "1px var(--watermark-stroke)",
+          background: "linear-gradient(180deg, var(--watermark-fill-start) 0%, var(--watermark-fill-end) 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           whiteSpace: "nowrap",
@@ -166,7 +166,7 @@ export default function MonitorPage() {
                 AISeal Monitor — Live Feed
               </span>
             </div>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 700, color: "#ededed", letterSpacing: "-0.02em", margin: 0 }}>
+            <h1 style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em", margin: 0 }}>
               Runtime LLM Surveillance
             </h1>
           </div>
@@ -176,7 +176,7 @@ export default function MonitorPage() {
             padding: "0.3rem 0.7rem", borderRadius: "6px",
             background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)",
           }}>
-            <span style={{ fontSize: "0.6rem", color: "#6b7280", letterSpacing: "0.08em", textTransform: "uppercase" }}>Engine</span>
+            <span style={{ fontSize: "0.6rem", color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Engine</span>
             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#a855f7" }}>Ghost99RT</span>
           </div>
         </div>
@@ -184,23 +184,23 @@ export default function MonitorPage() {
         {/* Stats bar */}
         <div style={{
           display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "1px", background: "#1a1a1a", borderRadius: "10px",
-          border: "1px solid #1a1a1a", overflow: "hidden", marginBottom: "1.25rem",
+          gap: "1px", background: "var(--border-subtle)", borderRadius: "10px",
+          border: "1px solid var(--border-subtle)", overflow: "hidden", marginBottom: "1.25rem",
         }}>
           {[
-            { value: stats.requests.toLocaleString(), label: "Requests Monitored", color: "#ededed" },
+            { value: stats.requests.toLocaleString(), label: "Requests Monitored", color: "var(--text-primary)" },
             { value: stats.blocked, label: "Threats Blocked", color: "#f85149" },
             { value: `${stats.avgLatency}ms`, label: "Avg Latency", color: "#0080ff" },
             { value: "99.98%", label: "Uptime", color: "#00c853" },
           ].map((s) => (
-            <div key={s.label} style={{ background: "#0f0f0f", padding: "1rem 0.75rem" }}>
+            <div key={s.label} style={{ background: "var(--bg-elevated)", padding: "1rem 0.75rem" }}>
               <StatCard {...s} />
             </div>
           ))}
         </div>
 
         {/* Log feed */}
-        <div style={{ borderRadius: "10px", border: "1px solid #1a1a1a", overflow: "hidden" }}>
+        <div style={{ borderRadius: "10px", border: "1px solid var(--border-subtle)", overflow: "hidden" }}>
 
           {/* Table header */}
           <div style={{
@@ -208,18 +208,18 @@ export default function MonitorPage() {
             gridTemplateColumns: "70px 130px 1fr 90px 65px",
             gap: "0.75rem",
             padding: "0.6rem 1rem",
-            background: "#0f0f0f",
-            borderBottom: "1px solid #1a1a1a",
+            background: "var(--bg-elevated)",
+            borderBottom: "1px solid var(--border-subtle)",
           }}>
             {["Status", "Model", "Prompt", "Category", "Latency"].map((h) => (
-              <span key={h} style={{ fontSize: "0.6rem", fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <span key={h} style={{ fontSize: "0.6rem", fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 {h}
               </span>
             ))}
           </div>
 
           {/* Rows */}
-          <div ref={listRef} style={{ background: "#0a0a0a" }}>
+          <div ref={listRef} style={{ background: "var(--bg-base)" }}>
             {entries.map((e, i) => {
               const s = STATUS_STYLE[e.status];
               const isNew = i === 0;
@@ -235,7 +235,7 @@ export default function MonitorPage() {
                     background: isNew
                       ? e.status === "BLOCK"
                         ? "rgba(248,81,73,0.05)"
-                        : "rgba(255,255,255,0.02)"
+                        : "var(--msg-bg)"
                       : "transparent",
                     transition: "background 0.8s ease",
                     boxShadow: isNew && e.status === "BLOCK" ? s.glow : undefined,
@@ -255,22 +255,22 @@ export default function MonitorPage() {
                   </div>
 
                   {/* Model */}
-                  <p style={{ fontSize: "0.65rem", color: "#4b5563", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ fontSize: "0.65rem", color: "var(--text-subtle)", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {e.model}
                   </p>
 
                   {/* Prompt */}
-                  <p style={{ fontSize: "0.72rem", color: e.status === "BLOCK" ? "#f87171" : e.status === "WARN" ? "#fbbf24" : "#6b7280", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ fontSize: "0.72rem", color: e.status === "BLOCK" ? "#f87171" : e.status === "WARN" ? "#fbbf24" : "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {e.prompt}
                   </p>
 
                   {/* Category */}
-                  <p style={{ fontSize: "0.6rem", color: e.category ? "#0080ff" : "#1f2937", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ fontSize: "0.6rem", color: e.category ? "#0080ff" : "var(--text-ghost)", margin: 0, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {e.category ?? "—"}
                   </p>
 
                   {/* Latency */}
-                  <p style={{ fontSize: "0.65rem", color: "#374151", margin: 0, fontFamily: "monospace", textAlign: "right" }}>
+                  <p style={{ fontSize: "0.65rem", color: "var(--text-faint)", margin: 0, fontFamily: "monospace", textAlign: "right" }}>
                     {e.latency}ms
                   </p>
                 </div>
@@ -279,7 +279,7 @@ export default function MonitorPage() {
           </div>
         </div>
 
-        <p style={{ textAlign: "center", fontSize: "0.65rem", color: "#1f2937", marginTop: "1rem", letterSpacing: "0.05em" }}>
+        <p style={{ textAlign: "center", fontSize: "0.65rem", color: "var(--text-ghost)", marginTop: "1rem", letterSpacing: "0.05em" }}>
           SIMULATED PREVIEW — Production deployment requires Ghost99RT agent installation
         </p>
       </div>

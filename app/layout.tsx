@@ -4,6 +4,8 @@ import "./globals.css";
 import Nav from "./components/Nav";
 import NineChat from "./components/NineChat";
 
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('aiseal-theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -21,12 +23,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col" style={{ background: "#0a0a0a", color: "#ededed" }}>
+      {/* eslint-disable-next-line @next/next/no-head-element */}
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} /></head>
+      <body className="min-h-full flex flex-col" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
         <Nav />
         <main className="flex-1">{children}</main>
         <footer
           className="text-center py-6 text-sm"
-          style={{ color: "#6b7280", borderTop: "1px solid #2a2a2a" }}
+          style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-mid)" }}
         >
           &copy; 2026 AISeal — aiseal.ai — All rights reserved
         </footer>

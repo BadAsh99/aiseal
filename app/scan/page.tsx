@@ -202,8 +202,8 @@ function severityBadge(severity: Finding["severity"]) {
     critical: { color: "#f85149" },
     high: { color: "#fb923c" },
     medium: { color: "#f59e0b" },
-    low: { color: "#6b7280" },
-    info: { color: "#374151" },
+    low: { color: "var(--text-muted)" },
+    info: { color: "var(--text-faint)" },
   };
   if (severity === "info") return null;
   return (
@@ -228,7 +228,7 @@ function TrustScoreCircle({ score, findings }: { score: number; findings?: Findi
             cy="70"
             r={radius}
             fill="none"
-            stroke="#1a1a1a"
+            style={{ stroke: "var(--border-subtle)" }}
             strokeWidth="10"
           />
           <circle
@@ -251,7 +251,7 @@ function TrustScoreCircle({ score, findings }: { score: number; findings?: Findi
           <span className="text-4xl font-bold" style={{ color, lineHeight: 1 }}>
             {score}
           </span>
-          <span className="text-xs" style={{ color: "#6b7280" }}>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             / 100
           </span>
         </div>
@@ -264,7 +264,7 @@ function TrustScoreCircle({ score, findings }: { score: number; findings?: Findi
           {scoreLabel(score, findings)}
         </span>
       </div>
-      <p className="text-xs text-center" style={{ color: "#6b7280" }}>
+      <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
         TrustScore
       </p>
     </div>
@@ -323,211 +323,414 @@ function exportCSV(result: ScanResult, prompt: string) {
 async function exportPDF(result: ScanResult, prompt: string, scenario: string | null, nineNarrative?: string) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
   const W = 210;
-  const MARGIN = 18;
+  const H = 297;
+  const MARGIN = 20;
   const COL = W - MARGIN * 2;
+  const PAGE_BOTTOM = 272;
   let y = 0;
+  let pageNum = 1;
 
   const riskLabel = scoreLabel(result.score, result.findings);
-  const riskColor: [number, number, number] =
-    riskLabel === "HIGH RISK" ? [248, 81, 73] :
-    riskLabel === "MEDIUM RISK" ? [245, 158, 11] :
-    [0, 200, 83];
+  const riskRGB: [number, number, number] =
+    riskLabel === "HIGH RISK"   ? [220, 38, 38]  :
+    riskLabel === "MEDIUM RISK" ? [217, 119, 6]  :
+                                   [22, 163, 74];
+  const riskBgRGB: [number, number, number] =
+    riskLabel === "HIGH RISK"   ? [254, 242, 242] :
+    riskLabel === "MEDIUM RISK" ? [255, 251, 235] :
+                                   [240, 253, 244];
+  const riskBorderRGB: [number, number, number] =
+    riskLabel === "HIGH RISK"   ? [254, 202, 202] :
+    riskLabel === "MEDIUM RISK" ? [253, 230, 138] :
+                                   [187, 247, 208];
+
+  const generated = new Date(result.timestamp).toLocaleString("en-US", {
+    year: "numeric", month: "long", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  function drawFooter(pn: number) {
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, H - 16, W - MARGIN, H - 16);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("AISeal", MARGIN, H - 10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(" · TrustScan Executive Report · aiseal.ai", MARGIN + 11, H - 10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Page ${pn}`, W - MARGIN, H - 10, { align: "right" });
+    doc.setFontSize(5.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      "Static pattern analysis only. Not a substitute for full penetration testing. AISeal Enterprise provides dynamic testing.",
+      W / 2, H - 5.5, { align: "center" }
+    );
+  }
+
+  function newPage() {
+    drawFooter(pageNum);
+    doc.addPage();
+    pageNum++;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(0, 0, W, 14, "F");
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(0, 14, W, 14);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("AISeal", MARGIN, 9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(" TrustScan Executive Report — continued", MARGIN + 11, 9);
+    y = 22;
+  }
+
+  function sectionHeader(title: string) {
+    if (y > PAGE_BOTTOM - 14) newPage();
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, W - MARGIN, y);
+    y += 5;
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text(title.toUpperCase(), MARGIN, y);
+    y += 6;
+  }
 
   // ── Header bar ──
-  doc.setFillColor(10, 10, 10);
-  doc.rect(0, 0, W, 28, "F");
-  doc.setFontSize(18);
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, W, 40, "F");
+
+  // AISeal wordmark
+  doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(237, 237, 237);
-  doc.text("AI", MARGIN, 17);
-  doc.setTextColor(0, 128, 255);
-  doc.text("Seal", MARGIN + 11, 17);
+  doc.setTextColor(255, 255, 255);
+  doc.text("AI", MARGIN, 20);
+  doc.setTextColor(56, 189, 248);
+  doc.text("Seal", MARGIN + 15, 20);
+
+  // Report type pill
+  doc.setFillColor(30, 41, 59);
+  doc.roundedRect(MARGIN + 37, 12, 52, 8, 2, 2, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(148, 163, 184);
+  doc.text("TRUSTSCAN EXECUTIVE REPORT", MARGIN + 63, 17.5, { align: "center" });
+
+  // Date top-right
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text(generated, W - MARGIN, 17.5, { align: "right" });
+
+  // Tagline
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text("TrustScan Executive Summary", MARGIN + 32, 17);
-  doc.setTextColor(107, 114, 128);
-  doc.text("aiseal.ai", W - MARGIN, 17, { align: "right" });
-  y = 38;
+  doc.setTextColor(148, 163, 184);
+  doc.text("AI Security Assurance · OWASP LLM Top 10 · aiseal.ai", MARGIN, 30);
+  if (scenario) {
+    doc.setTextColor(56, 189, 248);
+    doc.text(`Scenario: ${scenario}`, W - MARGIN, 30, { align: "right" });
+  }
 
-  // ── TrustScore block ──
-  doc.setFillColor(17, 17, 17);
-  doc.roundedRect(MARGIN, y, COL, 36, 3, 3, "F");
+  y = 52;
 
-  // Score circle (drawn)
-  const cx = MARGIN + 26;
-  const cy = y + 18;
-  doc.setDrawColor(...riskColor);
-  doc.setLineWidth(2.5);
-  doc.circle(cx, cy, 12, "S");
-  doc.setFontSize(16);
+  // ── TrustScore hero ──
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(MARGIN, y, COL, 44, 3, 3, "FD");
+
+  // Left accent stripe
+  doc.setFillColor(...riskRGB);
+  doc.roundedRect(MARGIN, y, 3, 44, 1.5, 1.5, "F");
+
+  // Score numeral
+  doc.setFontSize(44);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...riskColor);
-  doc.text(String(result.score), cx, cy + 5, { align: "center" });
+  doc.setTextColor(...riskRGB);
+  doc.text(String(result.score), MARGIN + 22, y + 30, { align: "center" });
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text("/ 100", MARGIN + 37, y + 30);
 
-  // Score label
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(237, 237, 237);
-  doc.text(`${result.score} / 100`, MARGIN + 46, y + 14);
+  // Vertical divider
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN + 52, y + 7, MARGIN + 52, y + 37);
+
+  // Risk label badge
+  doc.setFillColor(...riskBgRGB);
+  doc.setDrawColor(...riskRGB);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(MARGIN + 57, y + 9, 40, 11, 2, 2, "FD");
   doc.setFontSize(9);
-  doc.setTextColor(...riskColor);
-  doc.text(riskLabel, MARGIN + 46, y + 22);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...riskRGB);
+  doc.text(riskLabel, MARGIN + 77, y + 16, { align: "center" });
+
+  // Meta below badge
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text(`Model: ${result.model}  ·  ${new Date(result.timestamp).toLocaleString()}`, MARGIN + 46, y + 29);
-  if (scenario) {
-    doc.text(`Scenario: ${scenario}`, MARGIN + 46, y + 34);
-  }
-  y += 44;
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Model: `, MARGIN + 57, y + 27);
+  doc.setFont("helvetica", "bold");
+  doc.text(result.model, MARGIN + 57 + doc.getTextWidth("Model: "), y + 27);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${result.categories_checked} categories evaluated`, MARGIN + 57, y + 33);
+  doc.text(`Prompt: ${result.prompt_length} chars`, MARGIN + 57, y + 38.5);
 
-  // ── Summary stats ──
-  const fails = result.findings.filter((f) => f.status === "fail").length;
-  const warns = result.findings.filter((f) => f.status === "warning").length;
-  const passes = result.findings.filter((f) => f.status === "pass").length;
-  const statCols = [
-    { label: "Passed", value: passes, color: [0, 200, 83] as [number,number,number] },
-    { label: "Warnings", value: warns, color: [245, 158, 11] as [number,number,number] },
-    { label: "Failed", value: fails, color: [248, 81, 73] as [number,number,number] },
-    { label: "Categories", value: result.categories_checked, color: [0, 128, 255] as [number,number,number] },
+  y += 52;
+
+  // ── Stat cards ──
+  const fails     = result.findings.filter((f) => f.status === "fail").length;
+  const warns     = result.findings.filter((f) => f.status === "warning").length;
+  const passes    = result.findings.filter((f) => f.status === "pass").length;
+  const criticals = result.findings.filter((f) => f.status === "fail" && f.severity === "critical").length;
+
+  const statCards: { label: string; value: number; color: [number,number,number]; bg: [number,number,number]; border: [number,number,number] }[] = [
+    { label: "Passed",   value: passes,    color: [22, 163, 74],  bg: [240, 253, 244], border: [187, 247, 208] },
+    { label: "Warnings", value: warns,     color: [217, 119, 6],  bg: [255, 251, 235], border: [253, 230, 138] },
+    { label: "Failed",   value: fails,     color: [220, 38, 38],  bg: [254, 242, 242], border: [254, 202, 202] },
+    { label: "Critical", value: criticals, color: [124, 15, 15],  bg: [254, 226, 226], border: [252, 165, 165] },
   ];
-  const statW = COL / 4;
-  statCols.forEach((s, i) => {
-    const sx = MARGIN + i * statW;
-    doc.setFillColor(17, 17, 17);
-    doc.roundedRect(sx, y, statW - 2, 18, 2, 2, "F");
-    doc.setFontSize(14);
+
+  const cardW = (COL - 6) / 4;
+  statCards.forEach((s, i) => {
+    const sx = MARGIN + i * (cardW + 2);
+    doc.setFillColor(...s.bg);
+    doc.setDrawColor(...s.border);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(sx, y, cardW, 20, 2, 2, "FD");
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...s.color);
-    doc.text(String(s.value), sx + statW / 2 - 1, y + 10, { align: "center" });
+    doc.text(String(s.value), sx + cardW / 2, y + 12, { align: "center" });
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(107, 114, 128);
-    doc.text(s.label.toUpperCase(), sx + statW / 2 - 1, y + 15, { align: "center" });
+    doc.setTextColor(71, 85, 105);
+    doc.text(s.label.toUpperCase(), sx + cardW / 2, y + 17.5, { align: "center" });
   });
-  y += 26;
+  y += 28;
 
   // ── Findings table ──
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(107, 114, 128);
-  doc.text("OWASP LLM TOP 10 FINDINGS", MARGIN, y);
-  y += 5;
+  sectionHeader("OWASP LLM Top 10 — Findings Overview");
 
-  // Table header
-  doc.setFillColor(17, 17, 17);
-  doc.rect(MARGIN, y, COL, 6, "F");
+  // Table header row
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(MARGIN, y, COL, 8, 2, 2, "F");
   doc.setFontSize(6.5);
-  doc.setTextColor(75, 85, 99);
-  doc.text("STATUS", MARGIN + 2, y + 4);
-  doc.text("CODE", MARGIN + 18, y + 4);
-  doc.text("CATEGORY", MARGIN + 32, y + 4);
-  doc.text("SEVERITY", MARGIN + 106, y + 4);
-  y += 7;
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(148, 163, 184);
+  doc.text("STATUS",   MARGIN + 3,   y + 5.2);
+  doc.text("CODE",     MARGIN + 21,  y + 5.2);
+  doc.text("CATEGORY", MARGIN + 36,  y + 5.2);
+  doc.text("SEVERITY", MARGIN + 117, y + 5.2);
+  y += 9;
 
   result.findings.forEach((f, i) => {
-    const rowColor: [number, number, number] =
-      f.status === "fail" ? [248, 81, 73] :
-      f.status === "warning" ? [245, 158, 11] :
-      [0, 200, 83];
+    if (y > PAGE_BOTTOM - 9) newPage();
+
+    const statusRGB: [number, number, number] =
+      f.status === "fail"    ? [220, 38, 38]  :
+      f.status === "warning" ? [217, 119, 6]  :
+                               [22, 163, 74];
+    const statusBgRGB: [number, number, number] =
+      f.status === "fail"    ? [254, 242, 242] :
+      f.status === "warning" ? [255, 251, 235] :
+                               [240, 253, 244];
+    const severityRGB: [number, number, number] =
+      f.severity === "critical" ? [124, 15, 15]   :
+      f.severity === "high"     ? [220, 38, 38]   :
+      f.severity === "medium"   ? [217, 119, 6]   :
+      f.severity === "low"      ? [22, 163, 74]   :
+                                  [100, 116, 139];
 
     if (i % 2 === 0) {
-      doc.setFillColor(13, 13, 13);
-      doc.rect(MARGIN, y - 1, COL, 8, "F");
+      doc.setFillColor(248, 250, 252);
+    } else {
+      doc.setFillColor(255, 255, 255);
     }
+    doc.rect(MARGIN, y, COL, 8, "F");
 
-    // Status badge
-    doc.setFillColor(...rowColor.map((c) => Math.round(c * 0.15)) as [number,number,number]);
-    doc.roundedRect(MARGIN + 1, y, 13, 5, 1, 1, "F");
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, y + 8, MARGIN + COL, y + 8);
+
+    // Status pill
+    doc.setFillColor(...statusBgRGB);
+    doc.roundedRect(MARGIN + 2, y + 1.5, 14, 5, 1.2, 1.2, "F");
     doc.setFontSize(5.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...rowColor);
-    doc.text(f.status.toUpperCase(), MARGIN + 7.5, y + 3.5, { align: "center" });
+    doc.setTextColor(...statusRGB);
+    doc.text(f.status.toUpperCase(), MARGIN + 9, y + 5.2, { align: "center" });
 
+    // Code
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 128, 255);
-    doc.text(f.code, MARGIN + 18, y + 4);
+    doc.setTextColor(30, 64, 175);
+    doc.text(f.code, MARGIN + 21, y + 5.2);
 
+    // Category
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(180, 180, 180);
-    doc.text(f.category, MARGIN + 32, y + 4);
+    doc.setTextColor(30, 41, 59);
+    doc.text(f.category, MARGIN + 36, y + 5.2);
 
+    // Severity
     if (f.severity !== "info") {
-      doc.setTextColor(...rowColor);
-      doc.text(f.severity.toUpperCase(), MARGIN + 106, y + 4);
+      doc.setFontSize(6);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...severityRGB);
+      doc.text(f.severity.toUpperCase(), MARGIN + 117, y + 5.2);
     }
 
     y += 8;
   });
 
-  y += 4;
+  y += 8;
 
-  // ── Detail findings ──
+  // ── Flagged findings detail ──
   const flagged = result.findings.filter((f) => f.status !== "pass");
   if (flagged.length > 0) {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(107, 114, 128);
-    doc.text("FLAGGED FINDINGS — DETAIL", MARGIN, y);
-    y += 5;
+    sectionHeader("Flagged Findings — Detail");
 
     flagged.forEach((f) => {
-      if (y > 260) { doc.addPage(); y = 20; }
-      const fc: [number, number, number] = f.status === "fail" ? [248, 81, 73] : [245, 158, 11];
-      doc.setFillColor(17, 17, 17);
-      doc.roundedRect(MARGIN, y, COL, 14, 2, 2, "F");
-      doc.setDrawColor(...fc.map((c) => Math.round(c * 0.3)) as [number,number,number]);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(MARGIN, y, COL, 14, 2, 2, "S");
+      const fc: [number, number, number] =
+        f.status === "fail" ? [220, 38, 38] : [217, 119, 6];
+      const fcBorder: [number, number, number] =
+        f.status === "fail" ? [254, 202, 202] : [253, 230, 138];
 
-      doc.setFontSize(7);
+      const detailLines = doc.splitTextToSize(f.detail, COL - 28);
+      const cardH = 8 + detailLines.length * 4.5 + 4;
+
+      if (y + cardH > PAGE_BOTTOM) newPage();
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(...fcBorder);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(MARGIN, y, COL, cardH, 2, 2, "FD");
+
+      // Left accent
+      doc.setFillColor(...fc);
+      doc.roundedRect(MARGIN, y, 3, cardH, 1.5, 1.5, "F");
+
+      // Severity badge top-right
+      if (f.severity !== "info") {
+        const sevRGB: [number, number, number] =
+          f.severity === "critical" ? [124, 15, 15]  :
+          f.severity === "high"     ? [220, 38, 38]  :
+          f.severity === "medium"   ? [217, 119, 6]  :
+                                      [22, 163, 74];
+        const sevBgRGB: [number, number, number] =
+          f.severity === "critical" ? [254, 226, 226] :
+          f.severity === "high"     ? [254, 242, 242] :
+          f.severity === "medium"   ? [255, 251, 235] :
+                                      [240, 253, 244];
+        doc.setFillColor(...sevBgRGB);
+        doc.roundedRect(MARGIN + COL - 22, y + 2, 20, 5.5, 1, 1, "F");
+        doc.setFontSize(5.5);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...sevRGB);
+        doc.text(f.severity.toUpperCase(), MARGIN + COL - 12, y + 5.8, { align: "center" });
+      }
+
+      // Code + category
+      doc.setFontSize(7.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...fc);
-      doc.text(`${f.code} — ${f.category}`, MARGIN + 3, y + 5);
+      doc.text(f.code, MARGIN + 6, y + 6);
+      doc.setTextColor(15, 23, 42);
+      doc.text(` — ${f.category}`, MARGIN + 6 + doc.getTextWidth(f.code), y + 6);
+
+      // Detail text
+      doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(150, 150, 150);
-      const wrapped = doc.splitTextToSize(f.detail, COL - 6);
-      doc.text(wrapped[0], MARGIN + 3, y + 10);
-      y += 17;
+      doc.setTextColor(51, 65, 85);
+      doc.text(detailLines, MARGIN + 6, y + 11.5);
+
+      y += cardH + 4;
     });
   }
 
-  // ── NINE Narrative ──
+  y += 4;
+
+  // ── NINE Executive Analysis ──
   if (nineNarrative) {
-    if (y > 240) { doc.addPage(); y = 20; }
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(168, 85, 247);
-    doc.text("NINE EXECUTIVE ANALYSIS", MARGIN, y);
+    if (y > PAGE_BOTTOM - 20) newPage();
+    sectionHeader("NINE Executive Analysis");
+
     doc.setFontSize(6.5);
-    doc.setTextColor(107, 114, 128);
-    doc.text("Neural Intelligence Node Engine", MARGIN + 52, y);
-    y += 5;
-    doc.setFillColor(20, 10, 30);
-    const narrativeLines = doc.splitTextToSize(nineNarrative, COL - 8);
-    const blockH = narrativeLines.length * 4.5 + 8;
-    doc.roundedRect(MARGIN, y, COL, blockH, 2, 2, "F");
-    doc.setDrawColor(168, 85, 247, 0.3);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(MARGIN, y, COL, blockH, 2, 2, "S");
-    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(200, 180, 220);
-    doc.text(narrativeLines, MARGIN + 4, y + 6);
-    y += blockH + 6;
+    doc.setTextColor(100, 116, 139);
+    doc.text("Powered by Neural Intelligence Node Engine — AI-generated executive analysis", MARGIN, y);
+    y += 6;
+
+    const narrativeLines = doc.splitTextToSize(nineNarrative, COL - 10);
+    const blockH = narrativeLines.length * 4.8 + 10;
+
+    if (y + blockH > PAGE_BOTTOM) newPage();
+
+    doc.setFillColor(245, 243, 255);
+    doc.setDrawColor(196, 181, 253);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(MARGIN, y, COL, blockH, 2, 2, "FD");
+
+    // Left accent
+    doc.setFillColor(124, 58, 237);
+    doc.roundedRect(MARGIN, y, 3, blockH, 1.5, 1.5, "F");
+
+    // NINE label chip
+    doc.setFillColor(237, 233, 254);
+    doc.roundedRect(MARGIN + 6, y + 3, 18, 5.5, 1, 1, "F");
+    doc.setFontSize(5.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(109, 40, 217);
+    doc.text("NINE AI", MARGIN + 15, y + 6.8, { align: "center" });
+
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(46, 16, 101);
+    doc.text(narrativeLines, MARGIN + 6, y + 12);
+
+    y += blockH + 8;
   }
 
-  // ── Footer ──
-  doc.setFillColor(10, 10, 10);
-  doc.rect(0, 285, W, 12, "F");
-  doc.setFontSize(6.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(55, 65, 81);
-  doc.text("AISeal — AI You Can Trust — aiseal.ai", MARGIN, 291);
-  doc.text("Static pattern analysis only. Full dynamic testing available with AISeal Enterprise.", W - MARGIN, 291, { align: "right" });
+  // ── Evaluated prompt ──
+  if (prompt && prompt.trim().length > 0) {
+    if (y > PAGE_BOTTOM - 20) newPage();
+    sectionHeader("Evaluated Prompt");
+
+    const maxChars = 400;
+    const displayPrompt = prompt.length > maxChars
+      ? prompt.slice(0, maxChars) + ` … [${prompt.length - maxChars} chars truncated]`
+      : prompt;
+    const promptLines = doc.splitTextToSize(displayPrompt, COL - 8);
+    const promptBlockH = promptLines.length * 4.5 + 8;
+
+    if (y + promptBlockH > PAGE_BOTTOM) newPage();
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(MARGIN, y, COL, promptBlockH, 2, 2, "FD");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(promptLines, MARGIN + 4, y + 6);
+    y += promptBlockH + 4;
+  }
+
+  // ── Footer (all pages) ──
+  drawFooter(pageNum);
 
   doc.save(`aiseal-executive-summary-${Date.now()}.pdf`);
 }
@@ -578,7 +781,7 @@ export default function ScanPage() {
   const warnCount = result ? result.findings.filter((f) => f.status === "warning").length : 0;
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg-base)", minHeight: "100vh" }}>
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-10">
@@ -590,11 +793,11 @@ export default function ScanPage() {
           </p>
           <h1
             className="text-3xl font-bold mb-2"
-            style={{ color: "#ededed", letterSpacing: "-0.02em" }}
+            style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
           >
             TrustScan
           </h1>
-          <p className="text-base" style={{ color: "#6b7280" }}>
+          <p className="text-base" style={{ color: "var(--text-muted)" }}>
             Test a prompt against the OWASP LLM Top 10. Get a TrustScore instantly.
           </p>
         </div>
@@ -602,12 +805,12 @@ export default function ScanPage() {
         {/* Input Form */}
         <div
           className="rounded-xl p-6 mb-8"
-          style={{ background: "#111111", border: "1px solid #2a2a2a" }}
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)" }}
         >
           <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
             <label
               className="text-sm font-semibold flex-shrink-0"
-              style={{ color: "#ededed" }}
+              style={{ color: "var(--text-primary)" }}
             >
               Prompt to test
             </label>
@@ -639,9 +842,9 @@ export default function ScanPage() {
             rows={5}
             className="w-full rounded-lg px-4 py-3 text-sm resize-none outline-none font-mono"
             style={{
-              background: "#0a0a0a",
-              border: "1px solid #2a2a2a",
-              color: "#ededed",
+              background: "var(--bg-base)",
+              border: "1px solid var(--border-mid)",
+              color: "var(--text-primary)",
               lineHeight: "1.6",
             }}
           />
@@ -650,7 +853,7 @@ export default function ScanPage() {
             <div className="flex-1">
               <label
                 className="text-xs font-semibold mb-1.5 block"
-                style={{ color: "#6b7280" }}
+                style={{ color: "var(--text-muted)" }}
               >
                 Target Model
               </label>
@@ -659,9 +862,9 @@ export default function ScanPage() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                 style={{
-                  background: "#0a0a0a",
-                  border: "1px solid #2a2a2a",
-                  color: "#ededed",
+                  background: "var(--bg-base)",
+                  border: "1px solid var(--border-mid)",
+                  color: "var(--text-primary)",
                 }}
               >
                 {MODELS.map((m) => (
@@ -712,7 +915,7 @@ export default function ScanPage() {
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#0080ff" }}>
                 Running
               </p>
-              <p className="text-sm font-semibold" style={{ color: "#ededed" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 {runningScenario}
               </p>
             </div>
@@ -739,7 +942,7 @@ export default function ScanPage() {
                   <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#00c853" }}>
                     Results
                   </p>
-                  <p className="text-sm font-semibold" style={{ color: "#ededed" }}>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {runningScenario}
                   </p>
                 </div>
@@ -749,23 +952,23 @@ export default function ScanPage() {
             {/* Score + summary row */}
             <div
               className="rounded-xl p-6 mb-6 flex flex-col sm:flex-row items-center gap-8"
-              style={{ background: "#111111", border: "1px solid #2a2a2a" }}
+              style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)" }}
             >
               <TrustScoreCircle score={result.score} findings={result.findings} />
 
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#6b7280" }}>
+                    <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>
                       Scan Summary
                     </p>
-                    <p className="text-sm" style={{ color: "#ededed" }}>
+                    <p className="text-sm" style={{ color: "var(--text-primary)" }}>
                       Model:{" "}
                       <span style={{ color: "#0080ff" }}>
                         {MODELS.find((m) => m.value === result.model)?.label || result.model}
                       </span>
                     </p>
-                    <p className="text-sm" style={{ color: "#6b7280" }}>
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                       {new Date(result.timestamp).toLocaleString()} &middot; {result.prompt_length} chars
                     </p>
                   </div>
@@ -781,8 +984,8 @@ export default function ScanPage() {
                         className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
                         style={{
                           background: label.startsWith("PDF") ? "rgba(0,128,255,0.1)" : "transparent",
-                          color: label.startsWith("PDF") ? "#0080ff" : "#ededed",
-                          border: label.startsWith("PDF") ? "1px solid rgba(0,128,255,0.3)" : "1px solid #2a2a2a",
+                          color: label.startsWith("PDF") ? "#0080ff" : "var(--text-primary)",
+                          border: label.startsWith("PDF") ? "1px solid rgba(0,128,255,0.3)" : "1px solid var(--border-mid)",
                         }}
                       >
                         {label}
@@ -806,28 +1009,28 @@ export default function ScanPage() {
             {/* Findings Table */}
             <div
               className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid #2a2a2a" }}
+              style={{ border: "1px solid var(--border-mid)" }}
             >
               <div
                 className="px-5 py-3 flex items-center justify-between"
-                style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}
+                style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}
               >
-                <p className="text-sm font-semibold" style={{ color: "#ededed" }}>
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   OWASP LLM Top 10 Breakdown
                 </p>
-                <p className="text-xs" style={{ color: "#6b7280" }}>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                   {result.categories_checked} categories checked
                 </p>
               </div>
 
-              <div style={{ background: "#0d0d0d" }}>
+              <div style={{ background: "var(--bg-elevated)" }}>
                 {result.findings.map((finding, i) => (
                   <div
                     key={finding.code}
                     className="px-5 py-4 flex items-start gap-4"
                     style={{
                       borderBottom:
-                        i < result.findings.length - 1 ? "1px solid #1a1a1a" : "none",
+                        i < result.findings.length - 1 ? "1px solid var(--border-subtle)" : "none",
                       background:
                         finding.status === "fail"
                           ? "rgba(248,81,73,0.03)"
@@ -850,13 +1053,13 @@ export default function ScanPage() {
                         </span>
                         <span
                           className="text-sm font-semibold"
-                          style={{ color: "#ededed" }}
+                          style={{ color: "var(--text-primary)" }}
                         >
                           {finding.category}
                         </span>
                         {severityBadge(finding.severity)}
                       </div>
-                      <p className="text-xs leading-relaxed" style={{ color: "#6b7280" }}>
+                      <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
                         {finding.detail}
                       </p>
                     </div>
@@ -866,11 +1069,11 @@ export default function ScanPage() {
             </div>
 
             <div className="flex items-center justify-center gap-2 mt-4">
-              <span className="text-xs" style={{ color: "#374151" }}>Pattern analysis by</span>
+              <span className="text-xs" style={{ color: "var(--text-faint)" }}>Pattern analysis by</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.08)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>
                 NINE
               </span>
-              <span className="text-xs" style={{ color: "#374151" }}>· Neural Intelligence Node Engine</span>
+              <span className="text-xs" style={{ color: "var(--text-faint)" }}>· Neural Intelligence Node Engine</span>
             </div>
 
             {/* NINE Narrative */}
@@ -886,10 +1089,10 @@ export default function ScanPage() {
           <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "#0080ff" }}>
             Pricing
           </p>
-          <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#ededed", letterSpacing: "-0.02em" }}>
+          <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
             Start free. Scale when you&apos;re ready.
           </h2>
-          <p className="text-center text-sm mb-10" style={{ color: "#6b7280" }}>
+          <p className="text-center text-sm mb-10" style={{ color: "var(--text-muted)" }}>
             Every plan includes full OWASP LLM Top 10 coverage.
           </p>
 
@@ -990,7 +1193,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
           <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>
             NINE Analysis
           </span>
-          <span className="text-xs" style={{ color: "#4b5563" }}>· Neural Intelligence Node Engine</span>
+          <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Neural Intelligence Node Engine</span>
         </div>
         {!requested && (
           <button
@@ -1003,20 +1206,20 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
         )}
       </div>
 
-      <div className="px-5 py-4" style={{ background: "#0a0a0a" }}>
+      <div className="px-5 py-4" style={{ background: "var(--bg-base)" }}>
         {!requested && (
-          <p className="text-sm" style={{ color: "#374151" }}>
+          <p className="text-sm" style={{ color: "var(--text-faint)" }}>
             Ask NINE for an executive risk narrative on these findings.
           </p>
         )}
         {loading && (
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
-            <span className="text-sm" style={{ color: "#6b7280" }}>NINE is analyzing...</span>
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>NINE is analyzing...</span>
           </div>
         )}
         {narrative && !loading && (
-          <p className="text-sm leading-relaxed" style={{ color: "#d1d5db", lineHeight: "1.7" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", lineHeight: "1.7" }}>
             {narrative}
           </p>
         )}
@@ -1042,7 +1245,7 @@ function StatBox({
       <p className="text-2xl font-bold" style={{ color }}>
         {value}
       </p>
-      <p className="text-xs" style={{ color: "#6b7280" }}>
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
         {label}
       </p>
     </div>
@@ -1116,23 +1319,23 @@ function TestSuite() {
   }
 
   const allSelected = selected.size === RED_TEAM_SCENARIOS.length;
-  const color = avgScore === null ? "#6b7280" : scoreColor(avgScore);
+  const color = avgScore === null ? "var(--text-muted)" : scoreColor(avgScore);
 
   return (
     <div className="mt-16 mb-4">
       <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "#0080ff" }}>
         Red Team Suite
       </p>
-      <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#ededed", letterSpacing: "-0.02em" }}>
+      <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
         Run multiple tests. Get an aggregate score.
       </h2>
-      <p className="text-center text-sm mb-8" style={{ color: "#6b7280" }}>
+      <p className="text-center text-sm mb-8" style={{ color: "var(--text-muted)" }}>
         Select the scenarios you want to run, or fire the full suite at once.
       </p>
 
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #2a2a2a" }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-mid)" }}>
         {/* Suite header */}
-        <div className="px-5 py-3 flex items-center justify-between" style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}>
           <button
             onClick={toggleAll}
             className="text-xs font-semibold px-3 py-1.5 rounded"
@@ -1140,16 +1343,16 @@ function TestSuite() {
           >
             {allSelected ? "Deselect All" : "Select All"}
           </button>
-          <span className="text-xs" style={{ color: "#6b7280" }}>{selected.size} of {RED_TEAM_SCENARIOS.length} selected</span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{selected.size} of {RED_TEAM_SCENARIOS.length} selected</span>
         </div>
 
         {/* Scenario checkboxes */}
-        <div style={{ background: "#0d0d0d" }}>
+        <div style={{ background: "var(--bg-elevated)" }}>
           {RED_TEAM_SCENARIOS.map((s, i) => (
             <label
               key={i}
               className="flex items-center gap-3 px-5 py-3 cursor-pointer"
-              style={{ borderBottom: i < RED_TEAM_SCENARIOS.length - 1 ? "1px solid #1a1a1a" : "none" }}
+              style={{ borderBottom: i < RED_TEAM_SCENARIOS.length - 1 ? "1px solid var(--border-subtle)" : "none" }}
             >
               <input
                 type="checkbox"
@@ -1157,7 +1360,7 @@ function TestSuite() {
                 onChange={() => toggle(i)}
                 style={{ accentColor: "#0080ff", width: "14px", height: "14px" }}
               />
-              <span className="text-sm" style={{ color: selected.has(i) ? "#ededed" : "#6b7280" }}>
+              <span className="text-sm" style={{ color: selected.has(i) ? "var(--text-primary)" : "var(--text-muted)" }}>
                 {s.label}
               </span>
             </label>
@@ -1165,7 +1368,7 @@ function TestSuite() {
         </div>
 
         {/* Run button */}
-        <div className="px-5 py-4 flex items-center justify-between gap-4" style={{ background: "#111111", borderTop: "1px solid #2a2a2a" }}>
+        <div className="px-5 py-4 flex items-center justify-between gap-4" style={{ background: "var(--bg-surface)", borderTop: "1px solid var(--border-mid)" }}>
           <button
             onClick={runSuite}
             disabled={running || selected.size === 0}
@@ -1176,7 +1379,7 @@ function TestSuite() {
           </button>
           {avgScore !== null && (
             <div className="flex items-center gap-3">
-              <span className="text-xs" style={{ color: "#6b7280" }}>Avg TrustScore</span>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Avg TrustScore</span>
               <span className="text-2xl font-bold" style={{ color }}>{avgScore}</span>
               <span className="text-xs font-bold px-2 py-1 rounded" style={{ background: `${color}15`, color }}>
                 {scoreLabel(avgScore, results.flatMap((r) => r.findings))}
@@ -1188,16 +1391,16 @@ function TestSuite() {
 
       {/* Suite results */}
       {results.length > 0 && (
-        <div className="mt-4 rounded-xl overflow-hidden" style={{ border: "1px solid #2a2a2a" }}>
-          <div className="px-5 py-3" style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}>
-            <p className="text-sm font-semibold" style={{ color: "#ededed" }}>Suite Results</p>
+        <div className="mt-4 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-mid)" }}>
+          <div className="px-5 py-3" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Suite Results</p>
           </div>
-          <div style={{ background: "#0d0d0d" }}>
+          <div style={{ background: "var(--bg-elevated)" }}>
             {results.map((r, i) => (
               <div
                 key={i}
                 className="px-5 py-3 flex items-center gap-4"
-                style={{ borderBottom: i < results.length - 1 ? "1px solid #1a1a1a" : "none" }}
+                style={{ borderBottom: i < results.length - 1 ? "1px solid var(--border-subtle)" : "none" }}
               >
                 {/* Status indicator */}
                 <div className="flex-shrink-0 w-5">
@@ -1208,12 +1411,12 @@ function TestSuite() {
                     <div className="w-2 h-2 rounded-full" style={{ background: scoreColor(r.score) }} />
                   )}
                   {r.status === "idle" && (
-                    <div className="w-2 h-2 rounded-full" style={{ background: "#1f2937" }} />
+                    <div className="w-2 h-2 rounded-full" style={{ background: "var(--text-ghost)" }} />
                   )}
                 </div>
 
                 {/* Label */}
-                <span className="flex-1 text-sm" style={{ color: r.status === "idle" ? "#374151" : "#9ca3af" }}>
+                <span className="flex-1 text-sm" style={{ color: r.status === "idle" ? "var(--text-faint)" : "var(--text-secondary)" }}>
                   {r.label}
                 </span>
 
@@ -1264,8 +1467,8 @@ function PricingCard({
     <div
       className="rounded-xl p-6 flex flex-col gap-5 relative"
       style={{
-        background: highlight ? "rgba(0,128,255,0.06)" : "#111111",
-        border: highlight ? "1px solid rgba(0,128,255,0.4)" : "1px solid #2a2a2a",
+        background: highlight ? "rgba(0,128,255,0.06)" : "var(--bg-surface)",
+        border: highlight ? "1px solid rgba(0,128,255,0.4)" : "1px solid var(--border-mid)",
       }}
     >
       {highlight && (
@@ -1278,19 +1481,19 @@ function PricingCard({
       )}
 
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: highlight ? "#0080ff" : "#6b7280" }}>
+        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: highlight ? "#0080ff" : "var(--text-muted)" }}>
           {tier}
         </p>
         <div className="flex items-baseline gap-1 mb-2">
-          <span className="text-4xl font-bold" style={{ color: "#ededed" }}>{price}</span>
-          {period && <span className="text-sm" style={{ color: "#6b7280" }}>{period}</span>}
+          <span className="text-4xl font-bold" style={{ color: "var(--text-primary)" }}>{price}</span>
+          {period && <span className="text-sm" style={{ color: "var(--text-muted)" }}>{period}</span>}
         </div>
-        <p className="text-sm" style={{ color: "#6b7280", lineHeight: "1.5" }}>{description}</p>
+        <p className="text-sm" style={{ color: "var(--text-muted)", lineHeight: "1.5" }}>{description}</p>
       </div>
 
       <ul className="flex flex-col gap-2.5 flex-1">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: "#9ca3af" }}>
+          <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: "var(--text-secondary)" }}>
             <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M5 12L10 17L19 7" stroke="#00c853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -1304,7 +1507,7 @@ function PricingCard({
         style={
           ctaStyle === "primary"
             ? { background: "#0080ff", color: "#fff", border: "none" }
-            : { background: "transparent", color: "#ededed", border: "1px solid #2a2a2a" }
+            : { background: "transparent", color: "var(--text-primary)", border: "1px solid var(--border-mid)" }
         }
       >
         {cta}
