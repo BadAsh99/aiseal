@@ -100,7 +100,7 @@ function detectLLM06(prompt: string): Finding {
     /drop\s+(table|database|db)/i,
     /rm\s+-rf/i,
     /sudo\s+/i,
-    /shell_exec|exec\(|system\(/i,
+    /shell_exec|system\(/i,
     // Agentic / MCP tool abuse
     /call\s+this\s+tool\s+with\s+admin/i,
     /use\s+the\s+file\s+(system\s+)?tool\s+to/i,

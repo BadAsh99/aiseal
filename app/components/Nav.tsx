@@ -47,17 +47,19 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
-        <a
-          href="/scan"
-          className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
-          style={{
-            background: "#0080ff",
-            color: "#ffffff",
-            textDecoration: "none",
-          }}
-        >
-          Run Scan
-        </a>
+        {pathname !== "/scan" && (
+          <a
+            href="/scan"
+            className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
+            style={{
+              background: "#0080ff",
+              color: "#ffffff",
+              textDecoration: "none",
+            }}
+          >
+            Run Scan
+          </a>
+        )}
       </div>
     </nav>
   );

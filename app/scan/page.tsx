@@ -302,10 +302,13 @@ export default function ScanPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scannedPrompt, setScannedPrompt] = useState("");
+  const [activeScenario, setActiveScenario] = useState<string | null>(null);
+  const [runningScenario, setRunningScenario] = useState<string | null>(null);
 
   async function handleScan() {
     if (!prompt.trim()) return;
     setLoading(true);
+    setRunningScenario(activeScenario);
     setError(null);
     try {
       const res = await fetch("/api/scan", {
@@ -327,8 +330,9 @@ export default function ScanPage() {
     }
   }
 
-  function loadScenario(scenarioPrompt: string) {
+  function loadScenario(scenarioPrompt: string, scenarioLabel: string) {
     setPrompt(scenarioPrompt);
+    setActiveScenario(scenarioLabel);
   }
 
   const failCount = result ? result.findings.filter((f) => f.status === "fail").length : 0;
@@ -371,7 +375,8 @@ export default function ScanPage() {
             <select
               defaultValue=""
               onChange={(e) => {
-                if (e.target.value) loadScenario(e.target.value);
+                const selected = RED_TEAM_SCENARIOS.find((s) => s.prompt === e.target.value);
+                if (selected) loadScenario(selected.prompt, selected.label);
                 e.target.value = "";
               }}
               className="text-xs px-3 py-1.5 rounded outline-none"
@@ -447,9 +452,61 @@ export default function ScanPage() {
           )}
         </div>
 
+        {/* Running indicator */}
+        {loading && runningScenario && (
+          <div
+            className="rounded-xl px-6 py-4 mb-6 flex items-center gap-4"
+            style={{
+              background: "rgba(0,128,255,0.06)",
+              border: "1px solid rgba(0,128,255,0.3)",
+            }}
+          >
+            <div
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{
+                background: "#0080ff",
+                boxShadow: "0 0 8px #0080ff",
+                animation: "pulse 1s infinite",
+              }}
+            />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#0080ff" }}>
+                Running
+              </p>
+              <p className="text-sm font-semibold" style={{ color: "#ededed" }}>
+                {runningScenario}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Results */}
         {result && (
           <div>
+            {/* Scenario label */}
+            {runningScenario && !loading && (
+              <div
+                className="rounded-xl px-6 py-4 mb-6 flex items-center gap-4"
+                style={{
+                  background: "rgba(0,200,83,0.05)",
+                  border: "1px solid rgba(0,200,83,0.25)",
+                }}
+              >
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: "#00c853", boxShadow: "0 0 8px #00c853" }}
+                />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#00c853" }}>
+                    Results
+                  </p>
+                  <p className="text-sm font-semibold" style={{ color: "#ededed" }}>
+                    {runningScenario}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Score + summary row */}
             <div
               className="rounded-xl p-6 mb-6 flex flex-col sm:flex-row items-center gap-8"
