@@ -122,11 +122,10 @@ export default function Home() {
             <ProductCard
               icon={<MonitorIcon />}
               title="AISeal Monitor"
-              badge="Runtime Surveillance"
+              badge="Coming Soon"
               description="Behavioral proxy for production LLM traffic. Real-time anomaly detection, prompt injection alerts, and full audit logging."
-              cta="View Dashboard"
-              href="http://localhost:8889"
-              external
+              cta="Join Waitlist"
+              href="/scan"
               accent="#a855f7"
             />
             <ProductCard
