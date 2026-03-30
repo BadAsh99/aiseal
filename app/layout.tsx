@@ -4,7 +4,7 @@ import "./globals.css";
 import Nav from "./components/Nav";
 import NineChat from "./components/NineChat";
 
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('aiseal-theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+const THEME_SCRIPT = `(function(){try{var stored=localStorage.getItem('aiseal-theme');var t=stored||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
 const inter = Inter({
   subsets: ["latin"],
