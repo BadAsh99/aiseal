@@ -22,32 +22,50 @@ const OWASP_CATEGORIES = [
 ];
 
 function detectLLM01(prompt: string): Finding {
-  const patterns = [
-    /ignore\s+(all\s+)?previous\s+instructions?/i,
-    /jailbreak/i,
-    /bypass\s+(your\s+)?(safety|filter|restriction|instruction)/i,
-    /override\s+(your\s+)?instructions?/i,
-    /you\s+are\s+now\s+(a|an)\s+/i,
-    /forget\s+(your|all|everything)/i,
-    /pretend\s+(you\s+are|to\s+be)/i,
-    /disregard\s+(your|all|previous)/i,
-    /act\s+as\s+(if\s+you\s+are|a)\s+/i,
-    /DAN\b/,
-    // Indirect and multi-stage injection
-    /when\s+you\s+read\s+a\s+document\s+that\s+contains/i,
-    /if\s+any\s+tool\s+returns/i,
-    /the\s+next\s+time\s+you\s+are\s+called/i,
-    /store\s+this\s+instruction\s+for\s+later/i,
+  const hardPatterns = [
+    { re: /ignore\s+(all\s+)?previous\s+instructions?/i,             label: "direct override" },
+    { re: /jailbreak/i,                                               label: "jailbreak attempt" },
+    { re: /bypass\s+(your\s+)?(safety|filter|restriction|instruction)/i, label: "safety bypass" },
+    { re: /override\s+(your\s+)?instructions?/i,                     label: "instruction override" },
+    { re: /forget\s+(your|all|everything)/i,                         label: "memory wipe attempt" },
+    { re: /disregard\s+(your|all|previous)/i,                        label: "direct override" },
+    { re: /DAN\b/,                                                    label: "DAN jailbreak" },
   ];
 
-  const matched = patterns.find((p) => p.test(prompt));
-  if (matched) {
+  const softPatterns = [
+    { re: /you\s+are\s+now\s+(a|an)\s+/i,                            label: "persona replacement" },
+    { re: /pretend\s+(you\s+are|to\s+be)/i,                          label: "soft persona injection" },
+    { re: /act\s+as\s+(if\s+you\s+are|a)\s+/i,                      label: "soft persona injection" },
+    { re: /roleplay\s+as\s+(a|an)\s+/i,                              label: "roleplay-based injection" },
+    { re: /simulate\s+(being\s+)?(a|an)\s+/i,                        label: "simulation-based injection" },
+    { re: /imagine\s+you\s+(have\s+no|are\s+without)\s+(restrictions?|limits?|guidelines?)/i, label: "hypothetical constraint removal" },
+    { re: /hypothetically.{0,30}no\s+(restrictions?|limits?|rules?)/i, label: "hypothetical constraint removal" },
+    { re: /in\s+(a\s+)?(fictional|hypothetical|alternate)\s+(world|scenario|story|universe)/i, label: "fictional framing injection" },
+    { re: /as\s+a\s+character\s+(who|that)\s+(has\s+no|ignores?)\s+(restrictions?|rules?)/i,  label: "character-based constraint bypass" },
+    { re: /what\s+would\s+(an\s+)?unrestricted\s+(ai|model|version)/i, label: "unrestricted AI framing" },
+  ];
+
+  // Indirect and multi-stage injection
+  const indirectPatterns = [
+    { re: /when\s+you\s+read\s+a\s+document\s+that\s+contains/i,    label: "multi-stage indirect injection" },
+    { re: /if\s+any\s+tool\s+returns/i,                             label: "tool-response hijack" },
+    { re: /the\s+next\s+time\s+you\s+are\s+called/i,               label: "persistent instruction injection" },
+    { re: /store\s+this\s+instruction\s+for\s+later/i,             label: "persistent instruction injection" },
+  ];
+
+  const hardMatch  = hardPatterns.find(({ re }) => re.test(prompt));
+  const softMatch  = softPatterns.find(({ re }) => re.test(prompt));
+  const indirectMatch = indirectPatterns.find(({ re }) => re.test(prompt));
+  const match = hardMatch || indirectMatch || softMatch;
+
+  if (match) {
+    const attackType = hardMatch ? "Direct injection" : indirectMatch ? "Indirect/multi-stage injection" : "Soft/social injection";
     return {
       category: "Prompt Injection",
       code: "LLM01",
       status: "fail",
       severity: "critical",
-      detail: "Prompt injection pattern detected — attempt to override model instructions.",
+      detail: `${attackType} detected (${match.label}). Soft framing carries the same risk as direct override — the goal is identical: compromise model guardrails.`,
     };
   }
   return {
@@ -76,9 +94,9 @@ function detectLLM02(prompt: string): Finding {
     return {
       category: "Sensitive Information Disclosure",
       code: "LLM02",
-      status: "fail",
-      severity: "high",
-      detail: `Sensitive data pattern detected: ${matched.label}.`,
+      status: "warning",
+      severity: "medium",
+      detail: `Credential detected in prompt (${matched.label}) — intercepted before reaching the model. The credential is now in audit logs. Notify the user and rotate immediately. This is a user awareness failure, not a system breach.`,
     };
   }
   return {
