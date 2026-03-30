@@ -9,7 +9,7 @@ export default function Nav() {
   const links = [
     { href: "/scan", label: "TrustScan" },
     { href: "/registry", label: "Registry" },
-    { href: "/scan", label: "Monitor" },
+    { href: "/monitor", label: "Monitor" },
   ];
 
   return (
@@ -47,7 +47,7 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
-        {pathname !== "/scan" && (
+        {pathname !== "/scan" && pathname !== "/monitor" && (
           <a
             href="/scan"
             className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
