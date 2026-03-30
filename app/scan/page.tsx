@@ -161,9 +161,9 @@ function scoreColor(score: number): string {
 }
 
 function scoreLabel(score: number, findings?: Finding[]): string {
-  const hasCritical = findings?.some((f) => f.status === "fail" && f.severity === "critical");
+  const hasHighOrCritical = findings?.some((f) => f.status === "fail" && (f.severity === "critical" || f.severity === "high"));
   const hasFail = findings?.some((f) => f.status === "fail");
-  if (hasCritical || score < 40) return "HIGH RISK";
+  if (hasHighOrCritical || score < 40) return "HIGH RISK";
   if (hasFail || score < 70) return "MEDIUM RISK";
   return "LOW RISK";
 }
@@ -623,6 +623,9 @@ export default function ScanPage() {
           </div>
         )}
 
+        {/* Test Suite */}
+        <TestSuite />
+
         {/* Pricing */}
         <div className="mt-16 mb-4">
           <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "#0080ff" }}>
@@ -708,6 +711,198 @@ function StatBox({
       <p className="text-xs" style={{ color: "#6b7280" }}>
         {label}
       </p>
+    </div>
+  );
+}
+
+interface SuiteResult {
+  label: string;
+  score: number;
+  findings: Finding[];
+  status: "idle" | "running" | "done";
+}
+
+function TestSuite() {
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState<SuiteResult[]>([]);
+  const [avgScore, setAvgScore] = useState<number | null>(null);
+
+  function toggleAll() {
+    if (selected.size === RED_TEAM_SCENARIOS.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(RED_TEAM_SCENARIOS.map((_, i) => i)));
+    }
+  }
+
+  function toggle(i: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  async function runSuite() {
+    if (selected.size === 0) return;
+    const indices = Array.from(selected).sort((a, b) => a - b);
+    const initial: SuiteResult[] = indices.map((i) => ({
+      label: RED_TEAM_SCENARIOS[i].label,
+      score: 0,
+      findings: [],
+      status: "idle",
+    }));
+    setResults(initial);
+    setAvgScore(null);
+    setRunning(true);
+
+    const scores: number[] = [];
+
+    for (let r = 0; r < indices.length; r++) {
+      const idx = indices[r];
+      setResults((prev) => prev.map((e, j) => j === r ? { ...e, status: "running" } : e));
+      try {
+        const res = await fetch("/api/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: RED_TEAM_SCENARIOS[idx].prompt }),
+        });
+        const data = await res.json();
+        scores.push(data.score);
+        setResults((prev) => prev.map((e, j) => j === r ? { ...e, score: data.score, findings: data.findings, status: "done" } : e));
+      } catch {
+        setResults((prev) => prev.map((e, j) => j === r ? { ...e, score: 0, status: "done" } : e));
+        scores.push(0);
+      }
+    }
+
+    setAvgScore(Math.round(scores.reduce((a, b) => a + b, 0) / scores.length));
+    setRunning(false);
+  }
+
+  const allSelected = selected.size === RED_TEAM_SCENARIOS.length;
+  const color = avgScore === null ? "#6b7280" : scoreColor(avgScore);
+
+  return (
+    <div className="mt-16 mb-4">
+      <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "#0080ff" }}>
+        Red Team Suite
+      </p>
+      <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#ededed", letterSpacing: "-0.02em" }}>
+        Run multiple tests. Get an aggregate score.
+      </h2>
+      <p className="text-center text-sm mb-8" style={{ color: "#6b7280" }}>
+        Select the scenarios you want to run, or fire the full suite at once.
+      </p>
+
+      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #2a2a2a" }}>
+        {/* Suite header */}
+        <div className="px-5 py-3 flex items-center justify-between" style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}>
+          <button
+            onClick={toggleAll}
+            className="text-xs font-semibold px-3 py-1.5 rounded"
+            style={{ color: "#0080ff", background: "rgba(0,128,255,0.08)", border: "1px solid rgba(0,128,255,0.2)" }}
+          >
+            {allSelected ? "Deselect All" : "Select All"}
+          </button>
+          <span className="text-xs" style={{ color: "#6b7280" }}>{selected.size} of {RED_TEAM_SCENARIOS.length} selected</span>
+        </div>
+
+        {/* Scenario checkboxes */}
+        <div style={{ background: "#0d0d0d" }}>
+          {RED_TEAM_SCENARIOS.map((s, i) => (
+            <label
+              key={i}
+              className="flex items-center gap-3 px-5 py-3 cursor-pointer"
+              style={{ borderBottom: i < RED_TEAM_SCENARIOS.length - 1 ? "1px solid #1a1a1a" : "none" }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(i)}
+                onChange={() => toggle(i)}
+                style={{ accentColor: "#0080ff", width: "14px", height: "14px" }}
+              />
+              <span className="text-sm" style={{ color: selected.has(i) ? "#ededed" : "#6b7280" }}>
+                {s.label}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {/* Run button */}
+        <div className="px-5 py-4 flex items-center justify-between gap-4" style={{ background: "#111111", borderTop: "1px solid #2a2a2a" }}>
+          <button
+            onClick={runSuite}
+            disabled={running || selected.size === 0}
+            className="px-6 py-2.5 rounded-lg font-semibold text-sm disabled:opacity-40"
+            style={{ background: "#0080ff", color: "#fff" }}
+          >
+            {running ? "Running Suite..." : `Run ${selected.size > 0 ? selected.size : ""} Selected Test${selected.size !== 1 ? "s" : ""}`}
+          </button>
+          {avgScore !== null && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs" style={{ color: "#6b7280" }}>Avg TrustScore</span>
+              <span className="text-2xl font-bold" style={{ color }}>{avgScore}</span>
+              <span className="text-xs font-bold px-2 py-1 rounded" style={{ background: `${color}15`, color }}>
+                {scoreLabel(avgScore, results.flatMap((r) => r.findings))}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Suite results */}
+      {results.length > 0 && (
+        <div className="mt-4 rounded-xl overflow-hidden" style={{ border: "1px solid #2a2a2a" }}>
+          <div className="px-5 py-3" style={{ background: "#111111", borderBottom: "1px solid #2a2a2a" }}>
+            <p className="text-sm font-semibold" style={{ color: "#ededed" }}>Suite Results</p>
+          </div>
+          <div style={{ background: "#0d0d0d" }}>
+            {results.map((r, i) => (
+              <div
+                key={i}
+                className="px-5 py-3 flex items-center gap-4"
+                style={{ borderBottom: i < results.length - 1 ? "1px solid #1a1a1a" : "none" }}
+              >
+                {/* Status indicator */}
+                <div className="flex-shrink-0 w-5">
+                  {r.status === "running" && (
+                    <div className="w-2 h-2 rounded-full" style={{ background: "#0080ff", boxShadow: "0 0 6px #0080ff" }} />
+                  )}
+                  {r.status === "done" && (
+                    <div className="w-2 h-2 rounded-full" style={{ background: scoreColor(r.score) }} />
+                  )}
+                  {r.status === "idle" && (
+                    <div className="w-2 h-2 rounded-full" style={{ background: "#1f2937" }} />
+                  )}
+                </div>
+
+                {/* Label */}
+                <span className="flex-1 text-sm" style={{ color: r.status === "idle" ? "#374151" : "#9ca3af" }}>
+                  {r.label}
+                </span>
+
+                {/* Score + label */}
+                {r.status === "done" && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm font-bold" style={{ color: scoreColor(r.score) }}>{r.score}</span>
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded"
+                      style={{ background: `${scoreColor(r.score)}15`, color: scoreColor(r.score) }}
+                    >
+                      {scoreLabel(r.score, r.findings)}
+                    </span>
+                  </div>
+                )}
+                {r.status === "running" && (
+                  <span className="text-xs" style={{ color: "#0080ff" }}>Scanning...</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
