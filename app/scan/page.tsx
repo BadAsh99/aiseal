@@ -160,10 +160,12 @@ function scoreColor(score: number): string {
   return "#f85149";
 }
 
-function scoreLabel(score: number): string {
-  if (score >= 70) return "LOW RISK";
-  if (score >= 40) return "MEDIUM RISK";
-  return "HIGH RISK";
+function scoreLabel(score: number, findings?: Finding[]): string {
+  const hasCritical = findings?.some((f) => f.status === "fail" && f.severity === "critical");
+  const hasFail = findings?.some((f) => f.status === "fail");
+  if (hasCritical || score < 40) return "HIGH RISK";
+  if (hasFail || score < 70) return "MEDIUM RISK";
+  return "LOW RISK";
 }
 
 function statusBadge(status: Finding["status"]) {
@@ -199,7 +201,7 @@ function severityBadge(severity: Finding["severity"]) {
   );
 }
 
-function TrustScoreCircle({ score }: { score: number }) {
+function TrustScoreCircle({ score, findings }: { score: number; findings?: Finding[] }) {
   const color = scoreColor(score);
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
@@ -247,7 +249,7 @@ function TrustScoreCircle({ score }: { score: number }) {
           className="text-sm font-bold px-3 py-1 rounded-full"
           style={{ background: `${color}15`, color }}
         >
-          {scoreLabel(score)}
+          {scoreLabel(score, findings)}
         </span>
       </div>
       <p className="text-xs text-center" style={{ color: "#6b7280" }}>
@@ -263,7 +265,7 @@ function exportReport(result: ScanResult, prompt: string) {
     "=======================",
     `Generated: ${new Date(result.timestamp).toLocaleString()}`,
     `Model: ${result.model}`,
-    `TrustScore: ${result.score}/100 — ${scoreLabel(result.score)}`,
+    `TrustScore: ${result.score}/100 — ${scoreLabel(result.score, result.findings)}`,
     `Prompt Length: ${result.prompt_length} characters`,
     "",
     "PROMPT TESTED",
@@ -453,7 +455,7 @@ export default function ScanPage() {
               className="rounded-xl p-6 mb-6 flex flex-col sm:flex-row items-center gap-8"
               style={{ background: "#111111", border: "1px solid #2a2a2a" }}
             >
-              <TrustScoreCircle score={result.score} />
+              <TrustScoreCircle score={result.score} findings={result.findings} />
 
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">

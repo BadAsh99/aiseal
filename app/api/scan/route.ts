@@ -265,8 +265,8 @@ function passthrough(code: string, name: string): Finding {
 }
 
 const SEVERITY_DEDUCTIONS: Record<string, number> = {
-  critical: 35,
-  high: 20,
+  critical: 40,
+  high: 30,
   medium: 10,
   low: 5,
   info: 0,
