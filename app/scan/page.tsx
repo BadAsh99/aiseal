@@ -154,10 +154,11 @@ const MODELS = [
   { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
 ];
 
-function scoreColor(score: number): string {
-  if (score >= 70) return "#00c853";
-  if (score >= 40) return "#f59e0b";
-  return "#f85149";
+function scoreColor(score: number, findings?: Finding[]): string {
+  const label = scoreLabel(score, findings);
+  if (label === "HIGH RISK") return "#f85149";
+  if (label === "MEDIUM RISK") return "#f59e0b";
+  return "#00c853";
 }
 
 function scoreLabel(score: number, findings?: Finding[]): string {
@@ -202,7 +203,7 @@ function severityBadge(severity: Finding["severity"]) {
 }
 
 function TrustScoreCircle({ score, findings }: { score: number; findings?: Finding[] }) {
-  const color = scoreColor(score);
+  const color = scoreColor(score, findings);
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -991,7 +992,8 @@ function TestSuite() {
   }
 
   const allSelected = selected.size === RED_TEAM_SCENARIOS.length;
-  const color = avgScore === null ? "#6b7280" : scoreColor(avgScore);
+  const allFindings = results.flatMap((r) => r.findings);
+  const color = avgScore === null ? "#6b7280" : scoreColor(avgScore, allFindings);
 
   return (
     <div className="mt-16 mb-4">
@@ -1080,7 +1082,7 @@ function TestSuite() {
                     <div className="w-2 h-2 rounded-full" style={{ background: "#0080ff", boxShadow: "0 0 6px #0080ff" }} />
                   )}
                   {r.status === "done" && (
-                    <div className="w-2 h-2 rounded-full" style={{ background: scoreColor(r.score) }} />
+                    <div className="w-2 h-2 rounded-full" style={{ background: scoreColor(r.score, r.findings) }} />
                   )}
                   {r.status === "idle" && (
                     <div className="w-2 h-2 rounded-full" style={{ background: "#1f2937" }} />
@@ -1095,10 +1097,10 @@ function TestSuite() {
                 {/* Score + label */}
                 {r.status === "done" && (
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-sm font-bold" style={{ color: scoreColor(r.score) }}>{r.score}</span>
+                    <span className="text-sm font-bold" style={{ color: scoreColor(r.score, r.findings) }}>{r.score}</span>
                     <span
                       className="text-xs font-bold px-2 py-0.5 rounded"
-                      style={{ background: `${scoreColor(r.score)}15`, color: scoreColor(r.score) }}
+                      style={{ background: `${scoreColor(r.score, r.findings)}15`, color: scoreColor(r.score, r.findings) }}
                     >
                       {scoreLabel(r.score, r.findings)}
                     </span>
