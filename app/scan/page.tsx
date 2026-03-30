@@ -622,6 +622,67 @@ export default function ScanPage() {
             </p>
           </div>
         )}
+
+        {/* Pricing */}
+        <div className="mt-16 mb-4">
+          <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "#0080ff" }}>
+            Pricing
+          </p>
+          <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#ededed", letterSpacing: "-0.02em" }}>
+            Start free. Scale when you&apos;re ready.
+          </h2>
+          <p className="text-center text-sm mb-10" style={{ color: "#6b7280" }}>
+            Every plan includes full OWASP LLM Top 10 coverage.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <PricingCard
+              tier="Free"
+              price="$0"
+              period="forever"
+              description="For individuals and teams evaluating AI security posture."
+              features={[
+                "10 TrustScans per day",
+                "Full OWASP LLM Top 10 analysis",
+                "TrustScore + exportable report",
+                "13-test red team suite",
+              ]}
+              cta="You're on this plan"
+              ctaStyle="ghost"
+            />
+            <PricingCard
+              tier="Pro"
+              price="$99"
+              period="/ month"
+              description="For security teams running continuous AI red team testing."
+              features={[
+                "Unlimited TrustScans",
+                "REST API access",
+                "Scan history + audit log",
+                "CI/CD pipeline integration",
+                "Priority support",
+              ]}
+              cta="Start Pro Trial"
+              ctaStyle="primary"
+              highlight
+            />
+            <PricingCard
+              tier="Enterprise"
+              price="Custom"
+              period=""
+              description="For organizations certifying AI products at scale."
+              features={[
+                "Everything in Pro",
+                "AISeal Monitor (runtime surveillance)",
+                "AISeal Cert + public badge",
+                "Custom red team test suites",
+                "Dedicated SLA + onboarding",
+              ]}
+              cta="Contact Sales"
+              ctaStyle="ghost"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -647,6 +708,78 @@ function StatBox({
       <p className="text-xs" style={{ color: "#6b7280" }}>
         {label}
       </p>
+    </div>
+  );
+}
+
+function PricingCard({
+  tier,
+  price,
+  period,
+  description,
+  features,
+  cta,
+  ctaStyle,
+  highlight,
+}: {
+  tier: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  cta: string;
+  ctaStyle: "primary" | "ghost";
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className="rounded-xl p-6 flex flex-col gap-5 relative"
+      style={{
+        background: highlight ? "rgba(0,128,255,0.06)" : "#111111",
+        border: highlight ? "1px solid rgba(0,128,255,0.4)" : "1px solid #2a2a2a",
+      }}
+    >
+      {highlight && (
+        <div
+          className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold"
+          style={{ background: "#0080ff", color: "#fff" }}
+        >
+          Most Popular
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: highlight ? "#0080ff" : "#6b7280" }}>
+          {tier}
+        </p>
+        <div className="flex items-baseline gap-1 mb-2">
+          <span className="text-4xl font-bold" style={{ color: "#ededed" }}>{price}</span>
+          {period && <span className="text-sm" style={{ color: "#6b7280" }}>{period}</span>}
+        </div>
+        <p className="text-sm" style={{ color: "#6b7280", lineHeight: "1.5" }}>{description}</p>
+      </div>
+
+      <ul className="flex flex-col gap-2.5 flex-1">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: "#9ca3af" }}>
+            <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12L10 17L19 7" stroke="#00c853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        className="w-full py-2.5 rounded-lg text-sm font-semibold mt-2"
+        style={
+          ctaStyle === "primary"
+            ? { background: "#0080ff", color: "#fff", border: "none" }
+            : { background: "transparent", color: "#ededed", border: "1px solid #2a2a2a" }
+        }
+      >
+        {cta}
+      </button>
     </div>
   );
 }
