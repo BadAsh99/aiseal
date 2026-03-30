@@ -259,40 +259,240 @@ function TrustScoreCircle({ score, findings }: { score: number; findings?: Findi
   );
 }
 
-function exportReport(result: ScanResult, prompt: string) {
-  const lines: string[] = [
-    "AISeal TrustScan Report",
-    "=======================",
-    `Generated: ${new Date(result.timestamp).toLocaleString()}`,
-    `Model: ${result.model}`,
-    `TrustScore: ${result.score}/100 — ${scoreLabel(result.score, result.findings)}`,
-    `Prompt Length: ${result.prompt_length} characters`,
-    "",
-    "PROMPT TESTED",
-    "-------------",
-    prompt,
-    "",
-    "OWASP LLM TOP 10 FINDINGS",
-    "-------------------------",
-  ];
-
-  for (const f of result.findings) {
-    lines.push(`[${f.status.toUpperCase()}] ${f.code} ${f.category}`);
-    if (f.severity !== "info") lines.push(`  Severity: ${f.severity}`);
-    lines.push(`  ${f.detail}`);
-    lines.push("");
-  }
-
-  lines.push("---");
-  lines.push("AISeal — aiseal.ai — AI You Can Trust");
-
-  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `aiseal-trustscan-${Date.now()}.txt`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportJSON(result: ScanResult, prompt: string) {
+  const payload = {
+    report: "AISeal TrustScan",
+    generated: result.timestamp,
+    model: result.model,
+    trustScore: result.score,
+    riskLabel: scoreLabel(result.score, result.findings),
+    promptLength: result.prompt_length,
+    prompt,
+    findings: result.findings,
+    categoriesChecked: result.categories_checked,
+    source: "aiseal.ai",
+  };
+  download(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }), `aiseal-trustscan-${Date.now()}.json`);
+}
+
+function exportCSV(result: ScanResult, prompt: string) {
+  const rows = [
+    ["AISeal TrustScan Report"],
+    ["Generated", new Date(result.timestamp).toLocaleString()],
+    ["Model", result.model],
+    ["TrustScore", String(result.score)],
+    ["Risk Label", scoreLabel(result.score, result.findings)],
+    ["Prompt", `"${prompt.replace(/"/g, '""')}"`],
+    [],
+    ["Code", "Category", "Status", "Severity", "Detail"],
+    ...result.findings.map((f) => [
+      f.code,
+      f.category,
+      f.status.toUpperCase(),
+      f.severity.toUpperCase(),
+      `"${f.detail.replace(/"/g, '""')}"`,
+    ]),
+    [],
+    ["Source", "aiseal.ai"],
+  ];
+  const csv = rows.map((r) => r.join(",")).join("\n");
+  download(new Blob([csv], { type: "text/csv" }), `aiseal-trustscan-${Date.now()}.csv`);
+}
+
+async function exportPDF(result: ScanResult, prompt: string, scenario: string | null) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = 210;
+  const MARGIN = 18;
+  const COL = W - MARGIN * 2;
+  let y = 0;
+
+  const riskLabel = scoreLabel(result.score, result.findings);
+  const riskColor: [number, number, number] =
+    riskLabel === "HIGH RISK" ? [248, 81, 73] :
+    riskLabel === "MEDIUM RISK" ? [245, 158, 11] :
+    [0, 200, 83];
+
+  // ── Header bar ──
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, W, 28, "F");
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(237, 237, 237);
+  doc.text("AI", MARGIN, 17);
+  doc.setTextColor(0, 128, 255);
+  doc.text("Seal", MARGIN + 11, 17);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(107, 114, 128);
+  doc.text("TrustScan Executive Summary", MARGIN + 32, 17);
+  doc.setTextColor(107, 114, 128);
+  doc.text("aiseal.ai", W - MARGIN, 17, { align: "right" });
+  y = 38;
+
+  // ── TrustScore block ──
+  doc.setFillColor(17, 17, 17);
+  doc.roundedRect(MARGIN, y, COL, 36, 3, 3, "F");
+
+  // Score circle (drawn)
+  const cx = MARGIN + 26;
+  const cy = y + 18;
+  doc.setDrawColor(...riskColor);
+  doc.setLineWidth(2.5);
+  doc.circle(cx, cy, 12, "S");
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...riskColor);
+  doc.text(String(result.score), cx, cy + 5, { align: "center" });
+
+  // Score label
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(237, 237, 237);
+  doc.text(`${result.score} / 100`, MARGIN + 46, y + 14);
+  doc.setFontSize(9);
+  doc.setTextColor(...riskColor);
+  doc.text(riskLabel, MARGIN + 46, y + 22);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(107, 114, 128);
+  doc.text(`Model: ${result.model}  ·  ${new Date(result.timestamp).toLocaleString()}`, MARGIN + 46, y + 29);
+  if (scenario) {
+    doc.text(`Scenario: ${scenario}`, MARGIN + 46, y + 34);
+  }
+  y += 44;
+
+  // ── Summary stats ──
+  const fails = result.findings.filter((f) => f.status === "fail").length;
+  const warns = result.findings.filter((f) => f.status === "warning").length;
+  const passes = result.findings.filter((f) => f.status === "pass").length;
+  const statCols = [
+    { label: "Passed", value: passes, color: [0, 200, 83] as [number,number,number] },
+    { label: "Warnings", value: warns, color: [245, 158, 11] as [number,number,number] },
+    { label: "Failed", value: fails, color: [248, 81, 73] as [number,number,number] },
+    { label: "Categories", value: result.categories_checked, color: [0, 128, 255] as [number,number,number] },
+  ];
+  const statW = COL / 4;
+  statCols.forEach((s, i) => {
+    const sx = MARGIN + i * statW;
+    doc.setFillColor(17, 17, 17);
+    doc.roundedRect(sx, y, statW - 2, 18, 2, 2, "F");
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...s.color);
+    doc.text(String(s.value), sx + statW / 2 - 1, y + 10, { align: "center" });
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    doc.text(s.label.toUpperCase(), sx + statW / 2 - 1, y + 15, { align: "center" });
+  });
+  y += 26;
+
+  // ── Findings table ──
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(107, 114, 128);
+  doc.text("OWASP LLM TOP 10 FINDINGS", MARGIN, y);
+  y += 5;
+
+  // Table header
+  doc.setFillColor(17, 17, 17);
+  doc.rect(MARGIN, y, COL, 6, "F");
+  doc.setFontSize(6.5);
+  doc.setTextColor(75, 85, 99);
+  doc.text("STATUS", MARGIN + 2, y + 4);
+  doc.text("CODE", MARGIN + 18, y + 4);
+  doc.text("CATEGORY", MARGIN + 32, y + 4);
+  doc.text("SEVERITY", MARGIN + 106, y + 4);
+  y += 7;
+
+  result.findings.forEach((f, i) => {
+    const rowColor: [number, number, number] =
+      f.status === "fail" ? [248, 81, 73] :
+      f.status === "warning" ? [245, 158, 11] :
+      [0, 200, 83];
+
+    if (i % 2 === 0) {
+      doc.setFillColor(13, 13, 13);
+      doc.rect(MARGIN, y - 1, COL, 8, "F");
+    }
+
+    // Status badge
+    doc.setFillColor(...rowColor.map((c) => Math.round(c * 0.15)) as [number,number,number]);
+    doc.roundedRect(MARGIN + 1, y, 13, 5, 1, 1, "F");
+    doc.setFontSize(5.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...rowColor);
+    doc.text(f.status.toUpperCase(), MARGIN + 7.5, y + 3.5, { align: "center" });
+
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 128, 255);
+    doc.text(f.code, MARGIN + 18, y + 4);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(180, 180, 180);
+    doc.text(f.category, MARGIN + 32, y + 4);
+
+    if (f.severity !== "info") {
+      doc.setTextColor(...rowColor);
+      doc.text(f.severity.toUpperCase(), MARGIN + 106, y + 4);
+    }
+
+    y += 8;
+  });
+
+  y += 4;
+
+  // ── Detail findings ──
+  const flagged = result.findings.filter((f) => f.status !== "pass");
+  if (flagged.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(107, 114, 128);
+    doc.text("FLAGGED FINDINGS — DETAIL", MARGIN, y);
+    y += 5;
+
+    flagged.forEach((f) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+      const fc: [number, number, number] = f.status === "fail" ? [248, 81, 73] : [245, 158, 11];
+      doc.setFillColor(17, 17, 17);
+      doc.roundedRect(MARGIN, y, COL, 14, 2, 2, "F");
+      doc.setDrawColor(...fc.map((c) => Math.round(c * 0.3)) as [number,number,number]);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(MARGIN, y, COL, 14, 2, 2, "S");
+
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...fc);
+      doc.text(`${f.code} — ${f.category}`, MARGIN + 3, y + 5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(150, 150, 150);
+      const wrapped = doc.splitTextToSize(f.detail, COL - 6);
+      doc.text(wrapped[0], MARGIN + 3, y + 10);
+      y += 17;
+    });
+  }
+
+  // ── Footer ──
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 285, W, 12, "F");
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(55, 65, 81);
+  doc.text("AISeal — AI You Can Trust — aiseal.ai", MARGIN, 291);
+  doc.text("Static pattern analysis only. Full dynamic testing available with AISeal Enterprise.", W - MARGIN, 291, { align: "right" });
+
+  doc.save(`aiseal-executive-summary-${Date.now()}.pdf`);
 }
 
 export default function ScanPage() {
@@ -530,17 +730,26 @@ export default function ScanPage() {
                       {new Date(result.timestamp).toLocaleString()} &middot; {result.prompt_length} chars
                     </p>
                   </div>
-                  <button
-                    onClick={() => exportReport(result, scannedPrompt)}
-                    className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"
-                    style={{
-                      background: "transparent",
-                      color: "#ededed",
-                      border: "1px solid #2a2a2a",
-                    }}
-                  >
-                    Export Report
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {[
+                      { label: "JSON", fn: () => exportJSON(result, scannedPrompt) },
+                      { label: "CSV",  fn: () => exportCSV(result, scannedPrompt) },
+                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario) },
+                    ].map(({ label, fn }) => (
+                      <button
+                        key={label}
+                        onClick={fn}
+                        className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                        style={{
+                          background: label.startsWith("PDF") ? "rgba(0,128,255,0.1)" : "transparent",
+                          color: label.startsWith("PDF") ? "#0080ff" : "#ededed",
+                          border: label.startsWith("PDF") ? "1px solid rgba(0,128,255,0.3)" : "1px solid #2a2a2a",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
