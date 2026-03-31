@@ -154,6 +154,32 @@ const MODELS = [
   { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
 ];
 
+const MITRE_ATLAS_MAP: Record<string, { id: string; technique: string }[]> = {
+  LLM01: [{ id: "AML.T0051", technique: "LLM Prompt Injection" }],
+  LLM02: [{ id: "AML.T0025", technique: "Exfiltration via Cyber Means" }],
+  LLM03: [{ id: "AML.T0010", technique: "ML Supply Chain Compromise" }],
+  LLM04: [{ id: "AML.T0020", technique: "Poison Training Data" }],
+  LLM05: [{ id: "AML.T0048", technique: "LLM Jailbreak" }],
+  LLM06: [{ id: "AML.T0051", technique: "LLM Prompt Injection" }, { id: "AML.T0040", technique: "ML Inference API Access" }],
+  LLM07: [{ id: "AML.T0056", technique: "LLM Meta Prompt Extraction" }],
+  LLM08: [{ id: "AML.T0043", technique: "Craft Adversarial Data" }],
+  LLM09: [{ id: "AML.T0048", technique: "LLM Jailbreak" }],
+  LLM10: [{ id: "AML.T0034", technique: "Cost Harvesting" }],
+};
+
+const NIST_RMF_MAP: Record<string, { functions: string[]; property: string }> = {
+  LLM01: { functions: ["MEASURE", "MANAGE"], property: "Secure & Resilient" },
+  LLM02: { functions: ["MAP", "MANAGE"],     property: "Privacy-Enhanced" },
+  LLM03: { functions: ["GOVERN", "MAP"],     property: "Secure & Resilient" },
+  LLM04: { functions: ["MAP", "MEASURE"],    property: "Valid & Reliable" },
+  LLM05: { functions: ["MEASURE", "MANAGE"], property: "Safe" },
+  LLM06: { functions: ["GOVERN", "MANAGE"],  property: "Accountable & Transparent" },
+  LLM07: { functions: ["MEASURE", "MANAGE"], property: "Accountable & Transparent" },
+  LLM08: { functions: ["MAP", "MEASURE"],    property: "Valid & Reliable" },
+  LLM09: { functions: ["MAP", "MEASURE"],    property: "Valid & Reliable" },
+  LLM10: { functions: ["GOVERN", "MANAGE"],  property: "Safe" },
+};
+
 function scoreColor(score: number): string {
   // Smooth gradient: 0=red, 50=amber, 100=green — no hard cutoffs
   const s = Math.max(0, Math.min(100, score));
@@ -663,6 +689,127 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
 
   y += 4;
 
+  // ── NIST AI RMF Framework Alignment ──
+  sectionHeader("NIST AI RMF Framework Alignment");
+
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text("NIST AI 100-1  ·  Govern  ·  Map  ·  Measure  ·  Manage  ·  Trustworthy AI Properties", MARGIN, y);
+  y += 7;
+
+  // Table header
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(MARGIN, y, COL, 8, 2, 2, "F");
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(148, 163, 184);
+  doc.text("CODE",      MARGIN + 3,  y + 5.2);
+  doc.text("CATEGORY",  MARGIN + 22, y + 5.2);
+  doc.text("RMF FUNCTIONS",  MARGIN + 100, y + 5.2);
+  doc.text("PROPERTY",  MARGIN + 140, y + 5.2);
+  y += 9;
+
+  result.findings.forEach((f, i) => {
+    const nist = NIST_RMF_MAP[f.code];
+    if (!nist) return;
+    if (y > PAGE_BOTTOM - 9) newPage();
+
+    if (i % 2 === 0) { doc.setFillColor(248, 250, 252); } else { doc.setFillColor(255, 255, 255); }
+    doc.rect(MARGIN, y, COL, 8, "F");
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, y + 8, MARGIN + COL, y + 8);
+
+    // Code
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 64, 175);
+    doc.text(f.code, MARGIN + 3, y + 5.2);
+
+    // Category
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(f.status !== "pass" ? 30 : 100, f.status !== "pass" ? 41 : 116, f.status !== "pass" ? 59 : 139);
+    doc.text(f.category, MARGIN + 22, y + 5.2);
+
+    // RMF Functions
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 128, 255);
+    doc.text(nist.functions.join("  ·  "), MARGIN + 100, y + 5.2);
+
+    // Trustworthy Property
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(nist.property, MARGIN + 140, y + 5.2);
+
+    y += 8;
+  });
+
+  y += 8;
+
+  // ── MITRE ATLAS Technique Mapping ──
+  sectionHeader("MITRE ATLAS Technique Mapping");
+
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text("Adversarial Threat Landscape for AI Systems  ·  atlas.mitre.org", MARGIN, y);
+  y += 7;
+
+  // Table header
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(MARGIN, y, COL, 8, 2, 2, "F");
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(148, 163, 184);
+  doc.text("CODE",       MARGIN + 3,  y + 5.2);
+  doc.text("CATEGORY",   MARGIN + 22, y + 5.2);
+  doc.text("ATLAS ID",   MARGIN + 98, y + 5.2);
+  doc.text("TECHNIQUE",  MARGIN + 128, y + 5.2);
+  y += 9;
+
+  result.findings.forEach((f, i) => {
+    const techniques = MITRE_ATLAS_MAP[f.code];
+    if (!techniques || techniques.length === 0) return;
+    const isFlagged = f.status !== "pass";
+
+    const rowH = techniques.length > 1 ? 14 : 8;
+    if (y > PAGE_BOTTOM - rowH) newPage();
+
+    if (i % 2 === 0) { doc.setFillColor(248, 250, 252); } else { doc.setFillColor(255, 255, 255); }
+    doc.rect(MARGIN, y, COL, rowH, "F");
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, y + rowH, MARGIN + COL, y + rowH);
+
+    // Code
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 64, 175);
+    doc.text(f.code, MARGIN + 3, y + 5.2);
+
+    // Category
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(isFlagged ? 30 : 100, isFlagged ? 41 : 116, isFlagged ? 59 : 139);
+    doc.text(f.category, MARGIN + 22, y + 5.2);
+
+    // Techniques
+    techniques.forEach((t, ti) => {
+      const ty = y + 5.2 + ti * 6;
+      doc.setFontSize(6);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(isFlagged ? 220 : 100, isFlagged ? 38 : 116, isFlagged ? 38 : 139);
+      doc.text(t.id, MARGIN + 98, ty);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+      doc.text(t.technique, MARGIN + 128, ty);
+    });
+
+    y += rowH;
+  });
+
+  y += 8;
+
   // ── NINE Executive Analysis ──
   if (nineNarrative) {
     if (y > PAGE_BOTTOM - 20) newPage();
@@ -733,6 +880,191 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
   drawFooter(pageNum);
 
   doc.save(`aiseal-executive-summary-${Date.now()}.pdf`);
+}
+
+function NistFrameworkSection({ findings }: { findings: Finding[] }) {
+  const ALL_FUNCTIONS = ["GOVERN", "MAP", "MEASURE", "MANAGE"];
+  const impacted = new Set<string>();
+  findings.filter((f) => f.status !== "pass").forEach((f) => {
+    NIST_RMF_MAP[f.code]?.functions.forEach((fn) => impacted.add(fn));
+  });
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden mt-6"
+      style={{ border: "1px solid var(--border-mid)" }}
+    >
+      <div
+        className="px-5 py-3 flex items-center justify-between flex-wrap gap-3"
+        style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}
+      >
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            NIST AI RMF Framework Alignment
+          </p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            NIST AI 100-1 · Govern · Map · Measure · Manage
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          {ALL_FUNCTIONS.map((fn) => (
+            <span
+              key={fn}
+              className="text-xs font-bold px-2 py-0.5 rounded"
+              style={{
+                background: impacted.has(fn) ? "rgba(248,81,73,0.12)" : "rgba(0,200,83,0.08)",
+                color: impacted.has(fn) ? "#f85149" : "#00c853",
+                border: impacted.has(fn)
+                  ? "1px solid rgba(248,81,73,0.25)"
+                  : "1px solid rgba(0,200,83,0.2)",
+              }}
+            >
+              {fn}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ background: "var(--bg-elevated)" }}>
+        {findings.map((f, i) => {
+          const nist = NIST_RMF_MAP[f.code];
+          if (!nist) return null;
+          return (
+            <div
+              key={f.code}
+              className="px-5 py-3 flex items-center gap-4"
+              style={{
+                borderBottom:
+                  i < findings.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                background:
+                  f.status !== "pass" ? "rgba(248,81,73,0.02)" : "transparent",
+              }}
+            >
+              <span
+                className="text-xs font-mono font-bold flex-shrink-0"
+                style={{ color: "#0080ff", width: "44px" }}
+              >
+                {f.code}
+              </span>
+              <span
+                className="text-xs flex-1 min-w-0 truncate"
+                style={{
+                  color: f.status !== "pass" ? "var(--text-primary)" : "var(--text-muted)",
+                }}
+              >
+                {f.category}
+              </span>
+              <div className="flex gap-1 flex-shrink-0">
+                {nist.functions.map((fn) => (
+                  <span
+                    key={fn}
+                    className="text-xs px-1.5 py-0.5 rounded font-mono"
+                    style={{
+                      background: "rgba(0,128,255,0.08)",
+                      color: "#0080ff",
+                      border: "1px solid rgba(0,128,255,0.15)",
+                    }}
+                  >
+                    {fn}
+                  </span>
+                ))}
+              </div>
+              <span
+                className="text-xs flex-shrink-0 hidden sm:block"
+                style={{ color: "var(--text-faint)", minWidth: "148px", textAlign: "right" }}
+              >
+                {nist.property}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MitreAtlasSection({ findings }: { findings: Finding[] }) {
+  const flaggedCodes = new Set(
+    findings.filter((f) => f.status !== "pass").map((f) => f.code)
+  );
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden mt-4"
+      style={{ border: "1px solid var(--border-mid)" }}
+    >
+      <div
+        className="px-5 py-3 flex items-center justify-between flex-wrap gap-3"
+        style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}
+      >
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            MITRE ATLAS Technique Mapping
+          </p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Adversarial Threat Landscape for AI Systems · atlas.mitre.org
+          </p>
+        </div>
+        <span
+          className="text-xs font-bold px-2 py-0.5 rounded"
+          style={{
+            background: flaggedCodes.size > 0 ? "rgba(248,81,73,0.12)" : "rgba(0,200,83,0.08)",
+            color: flaggedCodes.size > 0 ? "#f85149" : "#00c853",
+            border: flaggedCodes.size > 0 ? "1px solid rgba(248,81,73,0.25)" : "1px solid rgba(0,200,83,0.2)",
+          }}
+        >
+          {flaggedCodes.size > 0 ? `${flaggedCodes.size} TECHNIQUE${flaggedCodes.size > 1 ? "S" : ""} TRIGGERED` : "NO TECHNIQUES TRIGGERED"}
+        </span>
+      </div>
+
+      <div style={{ background: "var(--bg-elevated)" }}>
+        {findings.map((f, i) => {
+          const techniques = MITRE_ATLAS_MAP[f.code];
+          if (!techniques) return null;
+          const isFlagged = f.status !== "pass";
+          return (
+            <div
+              key={f.code}
+              className="px-5 py-3 flex items-center gap-4"
+              style={{
+                borderBottom: i < findings.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                background: isFlagged ? "rgba(248,81,73,0.02)" : "transparent",
+              }}
+            >
+              <span
+                className="text-xs font-mono font-bold flex-shrink-0"
+                style={{ color: "#0080ff", width: "44px" }}
+              >
+                {f.code}
+              </span>
+              <span
+                className="text-xs flex-1 min-w-0 truncate hidden sm:block"
+                style={{ color: isFlagged ? "var(--text-primary)" : "var(--text-muted)" }}
+              >
+                {f.category}
+              </span>
+              <div className="flex gap-2 flex-wrap flex-shrink-0">
+                {techniques.map((t) => (
+                  <span
+                    key={t.id}
+                    className="text-xs px-2 py-0.5 rounded"
+                    style={{
+                      background: isFlagged ? "rgba(248,81,73,0.08)" : "rgba(100,116,139,0.08)",
+                      color: isFlagged ? "#f85149" : "var(--text-muted)",
+                      border: isFlagged ? "1px solid rgba(248,81,73,0.2)" : "1px solid var(--border-subtle)",
+                    }}
+                  >
+                    <span className="font-mono font-bold">{t.id}</span>
+                    <span className="font-normal"> · {t.technique}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function ScanPage() {
@@ -1068,6 +1400,9 @@ export default function ScanPage() {
               </div>
             </div>
 
+            <NistFrameworkSection findings={result.findings} />
+            <MitreAtlasSection findings={result.findings} />
+
             <div className="flex items-center justify-center gap-2 mt-4">
               <span className="text-xs" style={{ color: "var(--text-faint)" }}>Pattern analysis by</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.08)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>
@@ -1113,7 +1448,7 @@ export default function ScanPage() {
             />
             <PricingCard
               tier="Pro"
-              price="$99"
+              price="$499"
               period="/ month"
               description="For security teams running continuous AI red team testing."
               features={[

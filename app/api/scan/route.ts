@@ -53,21 +53,45 @@ function detectLLM01(prompt: string): Finding {
     { re: /store\s+this\s+instruction\s+for\s+later/i,             label: "persistent instruction injection" },
   ];
 
-  const hardMatch  = hardPatterns.find(({ re }) => re.test(prompt));
-  const softMatch  = softPatterns.find(({ re }) => re.test(prompt));
+  const hardMatch     = hardPatterns.find(({ re }) => re.test(prompt));
   const indirectMatch = indirectPatterns.find(({ re }) => re.test(prompt));
-  const match = hardMatch || indirectMatch || softMatch;
+  const softMatches   = softPatterns.filter(({ re }) => re.test(prompt));
 
-  if (match) {
-    const attackType = hardMatch ? "Direct injection" : indirectMatch ? "Indirect/multi-stage injection" : "Soft/social injection";
+  // Hard / indirect → always FAIL critical (unambiguous attack intent)
+  if (hardMatch || indirectMatch) {
+    const match = hardMatch || indirectMatch!;
+    const attackType = hardMatch ? "Direct injection" : "Indirect/multi-stage injection";
     return {
       category: "Prompt Injection",
       code: "LLM01",
       status: "fail",
       severity: "critical",
-      detail: `${attackType} detected (${match.label}). Soft framing carries the same risk as direct override — the goal is identical: compromise model guardrails.`,
+      detail: `${attackType} detected (${match.label}). Unambiguous attempt to override model guardrails.`,
     };
   }
+
+  // Multiple soft signals → corroborating evidence, escalate to FAIL high
+  if (softMatches.length >= 2) {
+    return {
+      category: "Prompt Injection",
+      code: "LLM01",
+      status: "fail",
+      severity: "high",
+      detail: `Multiple soft injection signals detected (${softMatches.map((m) => m.label).join(", ")}). Corroborating patterns indicate likely attack intent.`,
+    };
+  }
+
+  // Single soft signal → ambiguous, warn but don't fail (reduces false positives)
+  if (softMatches.length === 1) {
+    return {
+      category: "Prompt Injection",
+      code: "LLM01",
+      status: "warning",
+      severity: "medium",
+      detail: `Soft injection signal detected (${softMatches[0].label}). May be legitimate context — review prompt. Single ambiguous signal does not confirm attack intent.`,
+    };
+  }
+
   return {
     category: "Prompt Injection",
     code: "LLM01",
@@ -109,15 +133,13 @@ function detectLLM02(prompt: string): Finding {
 }
 
 function detectLLM06(prompt: string): Finding {
-  const patterns = [
-    /execute\s+(command|script|code|shell)/i,
-    /run\s+(this\s+)?(command|script|code)/i,
-    /\bdelete\s+(all|the|this|every|production)/i,
+  // Destructive / clearly malicious — always FAIL high
+  const destructivePatterns = [
+    /\bdelete\s+(all|every|production)/i,
     /deploy\s+to\s+production/i,
     /modify\s+production/i,
     /drop\s+(table|database|db)/i,
     /rm\s+-rf/i,
-    /sudo\s+/i,
     /shell_exec|system\(/i,
     // Agentic / MCP tool abuse
     /call\s+this\s+tool\s+with\s+admin/i,
@@ -137,16 +159,36 @@ function detectLLM06(prompt: string): Finding {
     /invoke\s+mcp/i,
   ];
 
-  const matched = patterns.find((p) => p.test(prompt));
-  if (matched) {
+  // Operational — legitimate in DevOps context, warn only
+  const operationalPatterns = [
+    /execute\s+(command|script|code|shell)/i,
+    /run\s+(this\s+)?(command|script|code)/i,
+    /\bdelete\s+(the|this)\s+/i,
+    /sudo\s+/i,
+  ];
+
+  const destructiveMatch = destructivePatterns.find((p) => p.test(prompt));
+  if (destructiveMatch) {
     return {
       category: "Excessive Agency",
       code: "LLM06",
       status: "fail",
       severity: "high",
-      detail: "Prompt requests high-privilege or destructive actions — excessive agency risk.",
+      detail: "Prompt requests destructive or high-privilege actions — clear excessive agency risk.",
     };
   }
+
+  const operationalMatch = operationalPatterns.find((p) => p.test(prompt));
+  if (operationalMatch) {
+    return {
+      category: "Excessive Agency",
+      code: "LLM06",
+      status: "warning",
+      severity: "medium",
+      detail: "Prompt contains operational action language (execute/run/delete/sudo). Likely legitimate DevOps context — verify intent before granting agentic permissions.",
+    };
+  }
+
   return {
     category: "Excessive Agency",
     code: "LLM06",
