@@ -6,7 +6,35 @@ interface Finding {
   status: "pass" | "fail" | "warning";
   severity: "critical" | "high" | "medium" | "low" | "info";
   detail: string;
+  nist?: { functions: string[]; pillars: string[] };
+  mitre?: { id: string; name: string }[];
 }
+
+const NIST_MAPPINGS: Record<string, { functions: string[]; pillars: string[] }> = {
+  LLM01: { functions: ["MEASURE", "MANAGE"],  pillars: ["Secure & Resilient", "Accountable & Transparent"] },
+  LLM02: { functions: ["MAP", "MANAGE"],       pillars: ["Privacy-Enhanced", "Accountable & Transparent"] },
+  LLM03: { functions: ["GOVERN", "MAP"],       pillars: ["Secure & Resilient", "Valid & Reliable"] },
+  LLM04: { functions: ["MAP", "MEASURE"],      pillars: ["Valid & Reliable", "Secure & Resilient"] },
+  LLM05: { functions: ["MEASURE", "MANAGE"],   pillars: ["Safe", "Secure & Resilient"] },
+  LLM06: { functions: ["GOVERN", "MANAGE"],    pillars: ["Accountable & Transparent", "Safe"] },
+  LLM07: { functions: ["MEASURE", "MANAGE"],   pillars: ["Secure & Resilient", "Privacy-Enhanced"] },
+  LLM08: { functions: ["MAP", "MEASURE"],      pillars: ["Valid & Reliable", "Secure & Resilient"] },
+  LLM09: { functions: ["MAP", "MEASURE"],      pillars: ["Valid & Reliable", "Accountable & Transparent"] },
+  LLM10: { functions: ["GOVERN", "MANAGE"],    pillars: ["Secure & Resilient", "Safe"] },
+};
+
+const MITRE_MAPPINGS: Record<string, { id: string; name: string }[]> = {
+  LLM01: [{ id: "AML.T0051", name: "LLM Prompt Injection" }],
+  LLM02: [{ id: "AML.T0025", name: "Exfiltration via Cyber Means" }],
+  LLM03: [{ id: "AML.T0010", name: "ML Supply Chain Compromise" }],
+  LLM04: [{ id: "AML.T0020", name: "Poison Training Data" }],
+  LLM05: [{ id: "AML.T0048", name: "LLM Jailbreak" }],
+  LLM06: [{ id: "AML.T0051", name: "LLM Prompt Injection" }, { id: "AML.T0040", name: "ML Inference API Access" }],
+  LLM07: [{ id: "AML.T0056", name: "LLM Meta Prompt Extraction" }],
+  LLM08: [{ id: "AML.T0043", name: "Craft Adversarial Data" }],
+  LLM09: [{ id: "AML.T0048", name: "LLM Jailbreak" }],
+  LLM10: [{ id: "AML.T0034", name: "Cost Harvesting" }],
+};
 
 const OWASP_CATEGORIES = [
   { code: "LLM01", name: "Prompt Injection" },
@@ -314,14 +342,22 @@ function detectLLM04(prompt: string): Finding {
   };
 }
 
-function passthrough(code: string, name: string): Finding {
+function withMappings(finding: Finding): Finding {
   return {
+    ...finding,
+    nist: NIST_MAPPINGS[finding.code],
+    mitre: MITRE_MAPPINGS[finding.code],
+  };
+}
+
+function passthrough(code: string, name: string): Finding {
+  return withMappings({
     category: name,
     code,
     status: "pass",
     severity: "info",
     detail: "No issues detected via static analysis. Dynamic testing recommended.",
-  };
+  });
 }
 
 const SEVERITY_DEDUCTIONS: Record<string, number> = {
@@ -348,13 +384,13 @@ export async function POST(req: NextRequest) {
   }
 
   const findings: Finding[] = [
-    detectLLM01(prompt),
-    detectLLM02(prompt),
+    withMappings(detectLLM01(prompt)),
+    withMappings(detectLLM02(prompt)),
     passthrough("LLM03", "Supply Chain Vulnerabilities"),
-    detectLLM04(prompt),
-    detectLLM05(prompt),
-    detectLLM06(prompt),
-    detectLLM07(prompt),
+    withMappings(detectLLM04(prompt)),
+    withMappings(detectLLM05(prompt)),
+    withMappings(detectLLM06(prompt)),
+    withMappings(detectLLM07(prompt)),
     passthrough("LLM08", "Vector and Embedding Weaknesses"),
     passthrough("LLM09", "Misinformation"),
     passthrough("LLM10", "Unbounded Consumption"),
