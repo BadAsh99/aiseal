@@ -1,0 +1,44 @@
+{
+  "customers": [
+    {
+      "name": "Acme Corp",
+      "owner": "ash.clements",
+      "airs_stage": "Pilot",
+      "trustscore": 74,
+      "last_scan": "2026-04-01",
+      "notes": "RAG pipeline flagged LLM06. Waiting on security team sign-off before Production."
+    },
+    {
+      "name": "Globex Industries",
+      "owner": "ash.clements",
+      "airs_stage": "Experiment",
+      "trustscore": 51,
+      "last_scan": "2026-03-28",
+      "notes": "LLM01 and LLM02 both failing. Needs remediation workshop before advancing."
+    },
+    {
+      "name": "Initech",
+      "owner": "ash.clements",
+      "airs_stage": "Production",
+      "trustscore": 91,
+      "last_scan": "2026-04-02",
+      "notes": "Fully deployed. Monitor enabled via Ghost99RT. Clean scan."
+    },
+    {
+      "name": "Umbrella AI",
+      "owner": "j.doe",
+      "airs_stage": "Proposal",
+      "trustscore": null,
+      "last_scan": null,
+      "notes": "Initial scoping call done. No scans yet. Executive sponsor engaged."
+    },
+    {
+      "name": "Stark Industries",
+      "owner": "j.doe",
+      "airs_stage": "Pilot",
+      "trustscore": 63,
+      "last_scan": "2026-03-30",
+      "notes": "LLM04 warning on excessive agency. Agent framework needs guardrails."
+    }
+  ]
+}
