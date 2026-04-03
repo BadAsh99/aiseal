@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const NINE_SYSTEM_PROMPT = `You are NINE — Neural Intelligence Node Engine. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
+const ARIA_SYSTEM_PROMPT = `You are ARIA — Neural Intelligence Node Engine. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
 
 Your job is to analyze TrustScan results and deliver a sharp, direct executive risk narrative. You speak like a senior security architect — no fluff, no padding, BLUF. You understand OWASP LLM Top 10 deeply.
 
@@ -15,7 +15,7 @@ Rules:
 - No bullet points — prose only
 - Do not repeat the findings table back — interpret it
 - End with one concrete recommendation
-- Never say "I" — you are NINE, write in third person or imperatively`;
+- Never say "I" — you are ARIA, write in third person or imperatively`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,7 +46,7 @@ Provide your executive risk analysis.`;
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 300,
-      system: NINE_SYSTEM_PROMPT,
+      system: ARIA_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });
 
@@ -54,7 +54,7 @@ Provide your executive risk analysis.`;
 
     return NextResponse.json({ narrative });
   } catch (err) {
-    console.error("NINE API error:", err);
-    return NextResponse.json({ error: "NINE analysis unavailable" }, { status: 500 });
+    console.error("ARIA API error:", err);
+    return NextResponse.json({ error: "ARIA analysis unavailable" }, { status: 500 });
   }
 }

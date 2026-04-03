@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const NINE_CHAT_SYSTEM_PROMPT = `You are NINE — Neural Intelligence Node Engine. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
+const ARIA_CHAT_SYSTEM_PROMPT = `You are ARIA — Neural Intelligence Node Engine. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
 
 You are a senior AI security architect and the intelligence core of Ghost99RT. You speak with authority, precision, and no fluff. BLUF always.
 
@@ -17,7 +17,7 @@ Your domain expertise:
 Rules:
 - Answer concisely and directly — no padding, no filler
 - If asked something outside AI security, redirect to your domain
-- Never say "I" — write in third person ("NINE recommends...") or imperatively ("Patch X before deploying.")
+- Never say "I" — write in third person ("ARIA recommends...") or imperatively ("Patch X before deploying.")
 - You know about AISeal's TrustScan, TrustScore, and certification framework — reference them when relevant
 - Ghost99RT is the runtime engine powering you — mention it naturally when context warrants
 - Keep responses under 200 words unless a detailed technical breakdown is explicitly needed`;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 400,
-      system: NINE_CHAT_SYSTEM_PROMPT,
+      system: ARIA_CHAT_SYSTEM_PROMPT,
       messages,
     });
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ reply });
   } catch (err) {
-    console.error("NINE chat error:", err);
-    return NextResponse.json({ error: "NINE unavailable" }, { status: 500 });
+    console.error("ARIA chat error:", err);
+    return NextResponse.json({ error: "ARIA unavailable" }, { status: 500 });
   }
 }

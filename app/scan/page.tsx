@@ -346,7 +346,7 @@ function exportCSV(result: ScanResult, prompt: string) {
   download(new Blob([csv], { type: "text/csv" }), `aiseal-trustscan-${Date.now()}.csv`);
 }
 
-async function exportPDF(result: ScanResult, prompt: string, scenario: string | null, nineNarrative?: string) {
+async function exportPDF(result: ScanResult, prompt: string, scenario: string | null, ariaAnalysis?: string) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -810,10 +810,10 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
 
   y += 8;
 
-  // ── NINE Executive Analysis ──
-  if (nineNarrative) {
+  // ── ARIA Executive Analysis ──
+  if (ariaAnalysis) {
     if (y > PAGE_BOTTOM - 20) newPage();
-    sectionHeader("NINE Executive Analysis");
+    sectionHeader("ARIA Executive Analysis");
 
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
@@ -821,7 +821,7 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
     doc.text("Powered by Neural Intelligence Node Engine — AI-generated executive analysis", MARGIN, y);
     y += 6;
 
-    const narrativeLines = doc.splitTextToSize(nineNarrative, COL - 10);
+    const narrativeLines = doc.splitTextToSize(ariaAnalysis, COL - 10);
     const blockH = narrativeLines.length * 4.8 + 10;
 
     if (y + blockH > PAGE_BOTTOM) newPage();
@@ -835,13 +835,13 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
     doc.setFillColor(124, 58, 237);
     doc.roundedRect(MARGIN, y, 3, blockH, 1.5, 1.5, "F");
 
-    // NINE label chip
+    // ARIA label chip
     doc.setFillColor(237, 233, 254);
     doc.roundedRect(MARGIN + 6, y + 3, 18, 5.5, 1, 1, "F");
     doc.setFontSize(5.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(109, 40, 217);
-    doc.text("NINE AI", MARGIN + 15, y + 6.8, { align: "center" });
+    doc.text("ARIA AI", MARGIN + 15, y + 6.8, { align: "center" });
 
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
@@ -850,6 +850,7 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
 
     y += blockH + 8;
   }
+
 
   // ── Evaluated prompt ──
   if (prompt && prompt.trim().length > 0) {
@@ -1076,13 +1077,13 @@ export default function ScanPage() {
   const [scannedPrompt, setScannedPrompt] = useState("");
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [runningScenario, setRunningScenario] = useState<string | null>(null);
-  const [nineNarrative, setNineNarrative] = useState<string | null>(null);
+  const [ariaAnalysis, setAriaAnalysis] = useState<string | null>(null);
 
   async function handleScan() {
     if (!prompt.trim()) return;
     setLoading(true);
     setRunningScenario(activeScenario);
-    setNineNarrative(null);
+    setAriaAnalysis(null);
     setError(null);
     try {
       const res = await fetch("/api/scan", {
@@ -1308,7 +1309,7 @@ export default function ScanPage() {
                     {[
                       { label: "JSON", fn: () => exportJSON(result, scannedPrompt) },
                       { label: "CSV",  fn: () => exportCSV(result, scannedPrompt) },
-                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario, nineNarrative ?? undefined) },
+                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario, ariaAnalysis ?? undefined) },
                     ].map(({ label, fn }) => (
                       <button
                         key={label}
@@ -1406,13 +1407,13 @@ export default function ScanPage() {
             <div className="flex items-center justify-center gap-2 mt-4">
               <span className="text-xs" style={{ color: "var(--text-faint)" }}>Pattern analysis by</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.08)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>
-                NINE
+                ARIA
               </span>
               <span className="text-xs" style={{ color: "var(--text-faint)" }}>· Neural Intelligence Node Engine</span>
             </div>
 
-            {/* NINE Narrative */}
-            <NineAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setNineNarrative} />
+            {/* ARIA Analysis */}
+            <AriaAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setAriaAnalysis} />
           </div>
         )}
 
@@ -1489,7 +1490,7 @@ interface FollowUp {
   content: string;
 }
 
-function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; scenario: string | null; onNarrative?: (n: string) => void }) {
+function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; scenario: string | null; onNarrative?: (n: string) => void }) {
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -1501,7 +1502,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
     setLoading(true);
     setRequested(true);
     try {
-      const res = await fetch("/api/nine", {
+      const res = await fetch("/api/aria", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score: result.score, findings: result.findings, model: result.model, scenario }),
@@ -1511,7 +1512,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       setNarrative(text);
       if (text && onNarrative) onNarrative(text);
     } catch {
-      setNarrative("NINE analysis unavailable.");
+      setNarrative("ARIA analysis unavailable.");
     } finally {
       setLoading(false);
     }
@@ -1526,7 +1527,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       .map((f) => `${f.code} ${f.severity.toUpperCase()}: ${f.detail}`)
       .join("; ");
 
-    const contextMsg = `TrustScan context — Score: ${result.score}/100, Model: ${result.model}${scenario ? `, Scenario: ${scenario}` : ""}. Key findings: ${fails || "All clear"}. NINE's initial analysis: ${narrative || "N/A"}`;
+    const contextMsg = `TrustScan context — Score: ${result.score}/100, Model: ${result.model}${scenario ? `, Scenario: ${scenario}` : ""}. Key findings: ${fails || "All clear"}. ARIA's initial analysis: ${narrative || "N/A"}`;
 
     const updated: FollowUp[] = [...followUps, { role: "user", content: q }];
     setFollowUps(updated);
@@ -1539,15 +1540,15 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
         { role: "assistant" as const, content: narrative || "" },
         ...updated,
       ];
-      const res = await fetch("/api/nine/chat", {
+      const res = await fetch("/api/aria/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages }),
       });
       const data = await res.json();
-      setFollowUps([...updated, { role: "assistant", content: data.reply || "NINE unavailable." }]);
+      setFollowUps([...updated, { role: "assistant", content: data.reply || "ARIA unavailable." }]);
     } catch {
-      setFollowUps([...updated, { role: "assistant", content: "NINE unavailable." }]);
+      setFollowUps([...updated, { role: "assistant", content: "ARIA unavailable." }]);
     } finally {
       setFollowLoading(false);
     }
@@ -1561,7 +1562,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       >
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>NINE Analysis</span>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>ARIA Analysis</span>
           <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Neural Intelligence Node Engine</span>
         </div>
         {!requested && (
@@ -1570,7 +1571,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
             className="text-xs font-semibold px-3 py-1.5 rounded"
             style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}
           >
-            Ask NINE
+            Ask ARIA
           </button>
         )}
       </div>
@@ -1578,13 +1579,13 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       <div className="px-5 py-4" style={{ background: "var(--bg-base)" }}>
         {!requested && (
           <p className="text-sm" style={{ color: "var(--text-faint)" }}>
-            Ask NINE for an executive risk narrative on these findings.
+            Ask ARIA for an executive risk narrative on these findings.
           </p>
         )}
         {loading && (
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>NINE is analyzing...</span>
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>ARIA is analyzing...</span>
           </div>
         )}
 
@@ -1616,7 +1617,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
                 {followLoading && (
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", animation: "pulse 1s infinite" }} />
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>NINE is thinking...</span>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>ARIA is thinking...</span>
                   </div>
                 )}
               </div>
@@ -1628,7 +1629,7 @@ function NineAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
                 value={followInput}
                 onChange={(e) => setFollowInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowUp(); } }}
-                placeholder="Ask NINE a follow-up question about these findings..."
+                placeholder="Ask ARIA a follow-up question about these findings..."
                 disabled={followLoading}
                 className="flex-1 text-xs px-3 py-2 rounded-lg outline-none"
                 style={{

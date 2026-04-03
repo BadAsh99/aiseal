@@ -9,10 +9,10 @@ interface Message {
 
 const GREETING: Message = {
   role: "assistant",
-  content: "NINE online. Neural Intelligence Node Engine — Ghost99RT. Ask anything about AI security, TrustScan results, or OWASP LLM Top 10.",
+  content: "ARIA online. Neural Intelligence Node Engine — Ghost99RT. Ask anything about AI security, TrustScan results, or OWASP LLM Top 10.",
 };
 
-export default function NineChat() {
+export default function AriaChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([GREETING]);
   const [input, setInput] = useState("");
@@ -41,7 +41,7 @@ export default function NineChat() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/nine/chat", {
+      const res = await fetch("/api/aria/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next.slice(1) }), // skip greeting (not a real API turn)
@@ -49,7 +49,7 @@ export default function NineChat() {
       const data = await res.json();
       const reply: Message = {
         role: "assistant",
-        content: data.reply ?? "NINE encountered an error. Try again.",
+        content: data.reply ?? "ARIA encountered an error. Try again.",
       };
       setMessages([...next, reply]);
     } catch {
@@ -75,7 +75,7 @@ export default function NineChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="Open NINE chat"
+        aria-label="Open ARIA chat"
         style={{
           position: "fixed",
           bottom: "1.5rem",
@@ -101,7 +101,7 @@ export default function NineChat() {
           fontFamily: "monospace",
         }}
       >
-        {open ? "✕" : "N9"}
+        {open ? "✕" : "AR"}
       </button>
 
       {/* Chat panel */}
@@ -147,7 +147,7 @@ export default function NineChat() {
                 }}
               />
               <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#a855f7", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                NINE
+                ARIA
               </span>
               <span style={{ fontSize: "0.6rem", color: "var(--text-subtle)", letterSpacing: "0.05em" }}>
                 Neural Intelligence Node Engine
@@ -218,7 +218,7 @@ export default function NineChat() {
                 </div>
                 {msg.role === "assistant" && i > 0 && (
                   <span style={{ fontSize: "0.55rem", color: "var(--text-ghost)", marginTop: "0.2rem", marginLeft: "0.25rem" }}>
-                    NINE · Ghost99RT
+                    ARIA · Ghost99RT
                   </span>
                 )}
               </div>
@@ -272,7 +272,7 @@ export default function NineChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Ask NINE anything..."
+              placeholder="Ask ARIA anything..."
               disabled={loading}
               style={{
                 flex: 1,
