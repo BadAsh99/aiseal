@@ -166,7 +166,7 @@ LUMEN_HELP = """*Lumen commands:*
 
 
 def route_command(text: str, user_name: str) -> str | None:
-    t = text.lower().strip()
+    t = " ".join(text.lower().split())  # normalize all whitespace
 
     if t in ("help", "lumen", "commands"):
         return LUMEN_HELP
