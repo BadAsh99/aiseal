@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ARIA! — Neural Intelligence Node Engine
+ARIA! — Adaptive Risk Intelligence Analyst
 Slack bot powered by Claude. Part of the AISeal platform.
 """
 
@@ -16,7 +16,7 @@ load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-SYSTEM_PROMPT = """You are ARIA — Neural Intelligence Node Engine — the AI security intelligence layer of the AISeal platform.
+SYSTEM_PROMPT = """You are ARIA — Adaptive Risk Intelligence Analyst — the AI security intelligence layer of the AISeal platform.
 
 You are a direct, technical AI security analyst. You help Professional Services consultants and their managers at Palo Alto Networks with:
 

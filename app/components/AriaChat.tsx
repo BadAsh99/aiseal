@@ -9,7 +9,7 @@ interface Message {
 
 const GREETING: Message = {
   role: "assistant",
-  content: "ARIA online. Neural Intelligence Node Engine — Ghost99RT. Ask anything about AI security, TrustScan results, or OWASP LLM Top 10.",
+  content: "ARIA online. Adaptive Risk Intelligence Analyst — Ghost99RT. Ask anything about AI security, TrustScan results, or OWASP LLM Top 10.",
 };
 
 export default function AriaChat() {
@@ -150,7 +150,7 @@ export default function AriaChat() {
                 ARIA
               </span>
               <span style={{ fontSize: "0.6rem", color: "var(--text-subtle)", letterSpacing: "0.05em" }}>
-                Neural Intelligence Node Engine
+                Adaptive Risk Intelligence Analyst
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>

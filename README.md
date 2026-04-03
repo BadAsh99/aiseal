@@ -68,15 +68,13 @@ Certification is criteria-based, not score-threshold-based.
 
 ---
 
-## NINE
+## ARIA
 
-**Neural Intelligence Node Engine** — the AI security analysis layer built on Ghost99RT.
+**Adaptive Risk Intelligence Analyst** — the AI security analysis layer built on Ghost99RT.
 
-NINE provides executive risk narratives on TrustScan results and answers follow-up questions about findings in context. It is not a chatbot. It is an intelligence engine — every response is scoped to AI security, OWASP LLM Top 10, and the specific scan results in front of it.
+ARIA provides executive risk narratives on TrustScan results and answers follow-up questions about findings in context. It is not a chatbot. It is an intelligence engine — every response is scoped to AI security, OWASP LLM Top 10, and the specific scan results in front of it.
 
-Available on every page via the **N9** floating button.
-
-*Nine nines — 99.9999999% uptime. That's the bar.*
+Available on every page via the **AR** floating button.
 
 ---
 

@@ -818,7 +818,7 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 116, 139);
-    doc.text("Powered by Neural Intelligence Node Engine — AI-generated executive analysis", MARGIN, y);
+    doc.text("Powered by Adaptive Risk Intelligence Analyst — AI-generated executive analysis", MARGIN, y);
     y += 6;
 
     const narrativeLines = doc.splitTextToSize(ariaAnalysis, COL - 10);
@@ -1409,7 +1409,7 @@ export default function ScanPage() {
               <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.08)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>
                 ARIA
               </span>
-              <span className="text-xs" style={{ color: "var(--text-faint)" }}>· Neural Intelligence Node Engine</span>
+              <span className="text-xs" style={{ color: "var(--text-faint)" }}>· Adaptive Risk Intelligence Analyst</span>
             </div>
 
             {/* ARIA Analysis */}
@@ -1563,7 +1563,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
           <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>ARIA Analysis</span>
-          <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Neural Intelligence Node Engine</span>
+          <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Adaptive Risk Intelligence Analyst</span>
         </div>
         {!requested && (
           <button
