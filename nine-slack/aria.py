@@ -51,35 +51,52 @@ def load_customers():
         return json.load(f)["customers"]
 
 
-def score_bar(score):
+STAGE_ABBR = {
+    "Proposal":   "St.1",
+    "Experiment": "St.2",
+    "Pilot":      "St.3",
+    "Production": "St.4",
+}
+
+
+def status_label(score):
     if score is None:
-        return "no scan"
+        return ("🔵", "In Progress")
     if score >= 80:
-        return f"{score}/100 ✅"
+        return ("✅", "On Track")
     if score >= 60:
-        return f"{score}/100 ⚠️"
-    return f"{score}/100 🔴"
-
-
-def stage_emoji(stage):
-    return {
-        "Proposal": "📋",
-        "Experiment": "🧪",
-        "Pilot": "🚀",
-        "Production": "✅",
-    }.get(stage, "❓")
+        return ("⚠️ ", "Stalled")
+    return ("🔴", "At Risk")
 
 
 def fmt_customer(c):
-    score = score_bar(c.get("trustscore"))
     stage = c.get("airs_stage", "Unknown")
-    emoji = stage_emoji(stage)
+    score = c.get("trustscore")
     last = c.get("last_scan") or "never"
     notes = c.get("notes", "")
+    emoji, label = status_label(score)
+    score_str = str(score) if score is not None else "—"
     return (
-        f"*{c['name']}* — {emoji} {stage} | TrustScore: {score} | Last scan: {last}\n"
+        f"*{c['name']}* — {STAGE_ABBR.get(stage, stage)} | Score: {score_str} | {emoji} {label} | Last scan: {last}\n"
         f"  _{notes}_"
     )
+
+
+def table_row(name, owner, stage, score, status_emoji, status_text):
+    return f"  {name:<20} {owner:<18} {stage:<6} {score:<6} {status_emoji} {status_text}"
+
+
+def build_table(customers):
+    header  = f"  {'ACCOUNT':<20} {'OWNER':<18} {'STAGE':<6} {'SCORE':<6} STATUS"
+    divider = "  " + "─" * 62
+    rows = []
+    for c in customers:
+        score = c.get("trustscore")
+        stage = STAGE_ABBR.get(c.get("airs_stage", ""), "—")
+        score_str = str(score) if score is not None else "—"
+        emoji, label = status_label(score)
+        rows.append(table_row(c["name"], c.get("owner", "—"), stage, score_str, emoji, label))
+    return header + "\n" + divider + "\n" + "\n".join(rows)
 
 
 # ── Lumen commands ──
@@ -97,24 +114,16 @@ def cmd_my_accounts(owner):
     mine = [c for c in customers if c.get("owner", "").lower() == owner.lower()]
     if not mine:
         return f"No accounts found for *{owner}*."
-    header = f"*Your accounts ({len(mine)}):*\n"
-    return header + "\n\n".join(fmt_customer(c) for c in mine)
+    lines = [f"*Your Accounts ({len(mine)})*", "━" * 44]
+    lines.append(build_table(mine))
+    return "\n".join(lines)
 
 
 def cmd_team_view():
     customers = load_customers()
-    by_owner = {}
-    for c in customers:
-        owner = c.get("owner", "unassigned")
-        by_owner.setdefault(owner, []).append(c)
-
-    lines = ["*Team View — All Accounts:*\n"]
-    for owner, accounts in sorted(by_owner.items()):
-        lines.append(f"*{owner}* ({len(accounts)} accounts)")
-        for c in accounts:
-            lines.append(fmt_customer(c))
-        lines.append("")
-    return "\n".join(lines)
+    lines = ["*TEAM VIEW — All Accounts*", "━" * 44]
+    lines.append(build_table(customers))
+    return "```" + "\n".join(lines) + "```"
 
 
 def cmd_at_risk(threshold=70):
@@ -122,21 +131,26 @@ def cmd_at_risk(threshold=70):
     at_risk = [c for c in customers if c.get("trustscore") is not None and c["trustscore"] < threshold]
     if not at_risk:
         return f"No customers below TrustScore {threshold}. All clear. ✅"
-    header = f"*At-risk accounts (TrustScore < {threshold}):*\n"
-    return header + "\n\n".join(fmt_customer(c) for c in at_risk)
+    lines = [f"*At-Risk Accounts (TrustScore < {threshold})*", "━" * 44]
+    lines.append(build_table(at_risk))
+    return "```" + "\n".join(lines) + "```"
 
 
 def cmd_pipeline():
     customers = load_customers()
-    stages = ["Proposal", "Experiment", "Pilot", "Production"]
-    lines = ["*AIRS Deployment Pipeline:*\n"]
-    for stage in stages:
+    stage_order = ["Proposal", "Experiment", "Pilot", "Production"]
+    stage_icons = {"Proposal": "📋", "Experiment": "🧪", "Pilot": "🚀", "Production": "✅"}
+    lines = ["*AIRS Deployment Pipeline*", "━" * 44]
+    for stage in stage_order:
+        abbr = STAGE_ABBR[stage]
+        icon = stage_icons[stage]
         in_stage = [c for c in customers if c.get("airs_stage") == stage]
-        emoji = stage_emoji(stage)
-        lines.append(f"{emoji} *{stage}* ({len(in_stage)})")
+        lines.append(f"\n{icon} *{stage}* ({abbr}) — {len(in_stage)} account{'s' if len(in_stage) != 1 else ''}")
         for c in in_stage:
-            score = score_bar(c.get("trustscore"))
-            lines.append(f"  • {c['name']} — {score}")
+            score = c.get("trustscore")
+            emoji, label = status_label(score)
+            score_str = str(score) if score is not None else "—"
+            lines.append(f"  • *{c['name']}* — Score: {score_str} {emoji} {label}")
     return "\n".join(lines)
 
 
