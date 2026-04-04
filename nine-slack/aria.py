@@ -236,16 +236,78 @@ def route_command(text: str, user_name: str) -> str | None:
     return natural_language_customer_lookup(text)
 
 
+# ── Per-thread memory (last 10 turns per thread) ──
+
+THREAD_MEMORY: dict[str, list] = {}
+THREAD_MEMORY_LIMIT = 10
+
+
+def get_thread_history(thread_id: str) -> list:
+    return THREAD_MEMORY.get(thread_id, [])
+
+
+def update_thread_history(thread_id: str, role: str, content: str):
+    if thread_id not in THREAD_MEMORY:
+        THREAD_MEMORY[thread_id] = []
+    THREAD_MEMORY[thread_id].append({"role": role, "content": content})
+    # Keep last N turns (user+assistant pairs)
+    if len(THREAD_MEMORY[thread_id]) > THREAD_MEMORY_LIMIT * 2:
+        THREAD_MEMORY[thread_id] = THREAD_MEMORY[thread_id][-THREAD_MEMORY_LIMIT * 2:]
+
+
+def forget_thread(thread_id: str):
+    THREAD_MEMORY.pop(thread_id, None)
+
+
 # ── AI fallback ──
 
-def ask_aria(question: str, personal: bool = False) -> str:
+def ask_aria(question: str, personal: bool = False, thread_id: str = None) -> str:
+    history = get_thread_history(thread_id) if thread_id else []
+    messages = history + [{"role": "user", "content": question}]
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
         system=PERSONAL_PROMPT if personal else SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": question}],
+        messages=messages,
     )
-    return response.content[0].text
+    reply = response.content[0].text
+    if thread_id:
+        update_thread_history(thread_id, "user", question)
+        update_thread_history(thread_id, "assistant", reply)
+    return reply
+
+
+# ── Block Kit helpers ──
+
+def blocks_text(text: str) -> list:
+    """Wrap plain text in a simple Block Kit section."""
+    return [{"type": "section", "text": {"type": "mrkdwn", "text": text}}]
+
+
+def blocks_customer(c: dict) -> list:
+    """Rich Block Kit card for a single customer."""
+    stage = c.get("airs_stage", "Unknown")
+    score = c.get("trustscore")
+    last = c.get("last_scan") or "never"
+    notes = c.get("notes", "")
+    emoji, label = status_label(score)
+    score_str = str(score) if score is not None else "—"
+    abbr = STAGE_ABBR.get(stage, stage)
+
+    return [
+        {"type": "divider"},
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Account*\n{c['name']}"},
+                {"type": "mrkdwn", "text": f"*Owner*\n{c.get('owner', '—')}"},
+                {"type": "mrkdwn", "text": f"*Stage*\n{abbr} — {stage}"},
+                {"type": "mrkdwn", "text": f"*TrustScore*\n{score_str}  {emoji} {label}"},
+                {"type": "mrkdwn", "text": f"*Last Scan*\n{last}"},
+            ],
+        },
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"_{notes}_"}} if notes else {"type": "divider"},
+    ]
 
 
 # ── Slack handlers ──
@@ -263,24 +325,41 @@ def get_user_name(user_id: str) -> str:
         return user_id
 
 
-def handle_text(text: str, user_id: str, say, personal: bool = False):
+def handle_text(text: str, user_id: str, say, personal: bool = False, thread_ts: str = None):
     user_name = get_user_name(user_id)
+    thread_id = thread_ts or user_id
+    reply_kwargs = {"thread_ts": thread_ts} if thread_ts else {}
+
+    # /forget command
+    if text.lower().strip() in ("/forget", "forget", "clear memory", "forget thread"):
+        forget_thread(thread_id)
+        say(text="Memory cleared for this thread. *— ARIA!*", **reply_kwargs)
+        return
+
     if not personal:
         lumen_response = route_command(text, user_name)
         if lumen_response:
-            say(lumen_response)
+            # Use Block Kit for customer status, plain text for everything else
+            if lumen_response.startswith("*Acme") or "\nSt." in lumen_response or "TEAM VIEW" in lumen_response:
+                say(text=lumen_response, **reply_kwargs)
+            else:
+                say(text=lumen_response, **reply_kwargs)
             return
-    say(":brain: thinking...")
-    say(ask_aria(text, personal=personal))
+
+    say(text=":brain: thinking...", **reply_kwargs)
+    reply = ask_aria(text, personal=personal, thread_id=thread_id)
+    say(text=reply, **reply_kwargs)
 
 
 @app.event("app_mention")
 def handle_mention(event, say):
     text = re.sub(r"<@[^>]+>", "", event.get("text", "")).strip()
+    thread_ts = event.get("thread_ts") or event.get("ts")
     if not text:
-        say(f"You called? Try `help` for Lumen commands or ask me anything. *— ARIA!*")
+        say(text="You called? Try `help` for Lumen commands or ask me anything. *— ARIA!*",
+            thread_ts=thread_ts)
         return
-    handle_text(text, event["user"], say)
+    handle_text(text, event["user"], say, thread_ts=thread_ts)
 
 
 @app.event("message")
@@ -292,7 +371,8 @@ def handle_dm(event, say):
     text = event.get("text", "").strip()
     if not text:
         return
-    handle_text(text, event["user"], say, personal=True)
+    # DMs: use user_id as thread context for persistent memory
+    handle_text(text, event["user"], say, personal=True, thread_ts=None)
 
 
 if __name__ == "__main__":
