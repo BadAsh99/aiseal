@@ -193,7 +193,10 @@ def route_command(text: str, user_name: str) -> str | None:
     if t.startswith("status "):
         return cmd_status(text[7:].strip())
 
-    if t in ("my accounts", "my customers", "accounts"):
+    if any(t == phrase or t.startswith(phrase) for phrase in (
+        "my accounts", "my customers", "accounts", "list my", "show my",
+        "list all my", "show all my", "all my accounts", "all my customers",
+    )):
         return cmd_my_accounts(user_name)
 
     if t in ("team view", "team", "all accounts"):
