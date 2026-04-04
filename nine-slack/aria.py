@@ -305,6 +305,219 @@ def cmd_pipeline():
     return "\n".join(lines)
 
 
+# ── Manager commands ──
+
+def _account_health_bucket(c):
+    """Return 'at-risk', 'stalled', or 'on-track' for grouping."""
+    score = c.get("trustscore")
+    next_due = c.get("next_action_due")
+    overdue = False
+    if next_due:
+        d = days_since(next_due)
+        overdue = d is not None and d > 0
+    if overdue or (score is not None and score < 60) or score is None:
+        return "at-risk"
+    if score < 80:
+        return "stalled"
+    return "on-track"
+
+
+def _fmt_manager_row(c):
+    """One-line account summary for manager views."""
+    score = c.get("trustscore")
+    score_str = str(score) if score is not None else "—"
+    stage = STAGE_ABBR.get(c.get("airs_stage", ""), "—")
+    emoji, _ = status_label(score)
+    next_action = c.get("next_action") or "None set"
+    next_due = c.get("next_action_due") or "—"
+    last = c.get("last_interaction") or "—"
+    days_idle = days_since(last)
+    idle_str = f"{days_idle}d ago" if days_idle is not None else "unknown"
+
+    overdue_flag = ""
+    if next_due and next_due != "—":
+        d = days_since(next_due)
+        if d is not None and d > 0:
+            overdue_flag = f"  ⚠️ OVERDUE {d}d"
+        elif d == 0:
+            overdue_flag = "  ⚠️ DUE TODAY"
+
+    return (
+        f"  • *{c['name']}* — {stage} | Score: {score_str} {emoji} | Last contact: {idle_str}\n"
+        f"    Action: {next_action} (due {next_due}){overdue_flag}"
+    )
+
+
+def cmd_manager_engineer(engineer: str) -> str:
+    """All accounts for a specific PS engineer, grouped by health."""
+    customers = load_customers()
+    accts = [c for c in customers if c.get("owner", "").lower() == engineer.lower()]
+    if not accts:
+        return f"No accounts found for engineer *{engineer}*."
+
+    buckets = {"at-risk": [], "stalled": [], "on-track": []}
+    for c in accts:
+        buckets[_account_health_bucket(c)].append(c)
+
+    overdue_count = sum(
+        1 for c in accts
+        if c.get("next_action_due") and days_since(c["next_action_due"]) is not None and days_since(c["next_action_due"]) > 0
+    )
+
+    lines = [
+        f"👤 *MANAGER VIEW — {engineer}*",
+        "━" * 44,
+        f"*{len(accts)} accounts* | 🔴 {len(buckets['at-risk'])} at-risk | ⚠️  {len(buckets['stalled'])} stalled | ✅ {len(buckets['on-track'])} on track | {overdue_count} overdue action{'s' if overdue_count != 1 else ''}",
+        "",
+    ]
+
+    if buckets["at-risk"]:
+        lines.append(f"🔴 *At-Risk ({len(buckets['at-risk'])})*")
+        for c in buckets["at-risk"]:
+            lines.append(_fmt_manager_row(c))
+        lines.append("")
+
+    if buckets["stalled"]:
+        lines.append(f"⚠️  *Stalled ({len(buckets['stalled'])})*")
+        for c in buckets["stalled"]:
+            lines.append(_fmt_manager_row(c))
+        lines.append("")
+
+    if buckets["on-track"]:
+        lines.append(f"✅ *On Track ({len(buckets['on-track'])})*")
+        for c in buckets["on-track"]:
+            lines.append(_fmt_manager_row(c))
+        lines.append("")
+
+    lines.append("_— ARIA!_")
+    return "\n".join(lines)
+
+
+def cmd_manager_summary() -> str:
+    """Team-wide executive summary across all engineers."""
+    customers = load_customers()
+
+    engineers: dict[str, list] = {}
+    for c in customers:
+        owner = c.get("owner", "unknown")
+        engineers.setdefault(owner, []).append(c)
+
+    stage_order = ["Proposal", "Experiment", "Pilot", "Production"]
+    stage_counts = {s: 0 for s in stage_order}
+    for c in customers:
+        s = c.get("airs_stage", "")
+        if s in stage_counts:
+            stage_counts[s] += 1
+
+    lines = [
+        "📊 *MANAGER SUMMARY — Team Overview*",
+        "━" * 44,
+        f"*{len(customers)} total accounts* across *{len(engineers)} engineer{'s' if len(engineers) != 1 else ''}*",
+        "",
+        "*Pipeline Distribution:*",
+    ]
+    stage_icons = {"Proposal": "📋", "Experiment": "🧪", "Pilot": "🚀", "Production": "✅"}
+    for s in stage_order:
+        icon = stage_icons[s]
+        lines.append(f"  {icon} {s}: {stage_counts[s]}")
+
+    lines.append("")
+    lines.append("*Engineer Breakdown:*")
+
+    most_at_risk_eng = None
+    most_at_risk_count = -1
+    worst_overdue_eng = None
+    worst_overdue_days = -1
+
+    for eng, accts in sorted(engineers.items()):
+        at_risk = [c for c in accts if _account_health_bucket(c) == "at-risk"]
+        stalled = [c for c in accts if _account_health_bucket(c) == "stalled"]
+        on_track = [c for c in accts if _account_health_bucket(c) == "on-track"]
+
+        overdue_days_list = []
+        for c in accts:
+            nd = c.get("next_action_due")
+            if nd:
+                d = days_since(nd)
+                if d is not None and d > 0:
+                    overdue_days_list.append(d)
+
+        overdue_count = len(overdue_days_list)
+        max_overdue = max(overdue_days_list) if overdue_days_list else 0
+
+        if len(at_risk) > most_at_risk_count:
+            most_at_risk_count = len(at_risk)
+            most_at_risk_eng = eng
+
+        if max_overdue > worst_overdue_days:
+            worst_overdue_days = max_overdue
+            worst_overdue_eng = eng
+
+        lines.append(
+            f"  • *{eng}* — {len(accts)} accounts | "
+            f"🔴 {len(at_risk)} at-risk | ⚠️  {len(stalled)} stalled | ✅ {len(on_track)} on track"
+            + (f" | {overdue_count} overdue (max {max_overdue}d)" if overdue_count else "")
+        )
+
+    lines.append("")
+    if most_at_risk_eng:
+        lines.append(f"🔴 *Most at-risk accounts:* {most_at_risk_eng} ({most_at_risk_count})")
+    if worst_overdue_eng and worst_overdue_days > 0:
+        lines.append(f"⏰ *Most overdue:* {worst_overdue_eng} ({worst_overdue_days}d past due)")
+
+    lines.append("")
+    lines.append("_— ARIA!_")
+    return "\n".join(lines)
+
+
+def cmd_manager_overdue() -> str:
+    """All overdue actions across the entire team, sorted by most overdue."""
+    customers = load_customers()
+
+    overdue = []
+    for c in customers:
+        nd = c.get("next_action_due")
+        if nd:
+            d = days_since(nd)
+            if d is not None and d > 0:
+                overdue.append((d, c))
+
+    if not overdue:
+        return "No overdue actions across the team. Clean slate. ✅\n\n_— ARIA!_"
+
+    overdue.sort(key=lambda x: x[0], reverse=True)
+
+    lines = [
+        f"⏰ *OVERDUE ACTIONS — {len(overdue)} account{'s' if len(overdue) != 1 else ''}*",
+        "━" * 44,
+        "",
+    ]
+    for d, c in overdue:
+        action = c.get("next_action") or "No action set"
+        nd = c.get("next_action_due")
+        lines.append(
+            f"  • *{c['name']}* — owner: `{c.get('owner', '—')}` | {STAGE_ABBR.get(c.get('airs_stage', ''), '—')} | *{d}d overdue* (due {nd})\n"
+            f"    Action: {action}"
+        )
+
+    lines.append("")
+    lines.append("_— ARIA!_")
+    return "\n".join(lines)
+
+
+def cmd_manager_engineer_customer(engineer: str, customer_query: str) -> str:
+    """Call-prep-style drill-down for one customer on one engineer's book."""
+    customers = load_customers()
+    accts = [c for c in customers if c.get("owner", "").lower() == engineer.lower()]
+    if not accts:
+        return f"No accounts found for engineer *{engineer}*."
+    matches = [c for c in accts if customer_query.lower() in c["name"].lower()]
+    if not matches:
+        return f"No account matching *{customer_query}* found under *{engineer}*."
+    # Reuse cmd_prep output — it already formats the full call-prep view
+    return cmd_prep(matches[0]["name"])
+
+
 # ── Command router ──
 
 LUMEN_HELP = """*Lumen commands:*
@@ -315,6 +528,13 @@ LUMEN_HELP = """*Lumen commands:*
 • `at-risk` — customers below TrustScore 70
 • `pipeline` — all customers by AIRS stage
 • `digest` — daily health summary (red/yellow/green)
+
+*Manager commands:*
+• `manager <engineer>` — all accounts for one PS engineer, grouped by health
+• `manager summary` — team-wide executive summary with health stats
+• `manager overdue` — all overdue actions across the team, sorted by most overdue
+• `manager <engineer> <customer>` — full call-prep drill-down for a specific engagement
+
 • `/forget` — clear this thread's memory
 • anything else — ask ARIA directly"""
 
@@ -370,6 +590,32 @@ def route_command(text: str, user_name: str) -> str | None:
 
     if t in ("pipeline", "stages", "deployment"):
         return cmd_pipeline()
+
+    # Manager commands
+    if t.startswith("manager "):
+        rest = text[8:].strip()  # preserve original casing after "manager "
+        rest_lower = rest.lower()
+
+        if rest_lower in ("summary", "team summary", "team"):
+            return cmd_manager_summary()
+
+        if rest_lower in ("overdue", "overdue actions", "all overdue"):
+            return cmd_manager_overdue()
+
+        # "manager <engineer> <customer>" — two tokens, second is customer query
+        # Heuristic: if rest contains a space, split on first space and check if
+        # first token is a known engineer; if so treat remainder as customer query.
+        if " " in rest_lower:
+            parts = rest.split(" ", 1)
+            eng_token = parts[0]
+            customer_token = parts[1]
+            customers_loaded = load_customers()
+            known_owners = {c.get("owner", "").lower() for c in customers_loaded}
+            if eng_token.lower() in known_owners:
+                return cmd_manager_engineer_customer(eng_token, customer_token)
+
+        # "manager <engineer>"
+        return cmd_manager_engineer(rest)
 
     # Natural language customer lookup
     return natural_language_customer_lookup(text)
