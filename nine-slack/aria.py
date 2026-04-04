@@ -165,6 +165,25 @@ LUMEN_HELP = """*Lumen commands:*
 • anything else — ask ARIA directly"""
 
 
+STATUS_TRIGGERS = (
+    "latest on", "status of", "update on", "tell me about",
+    "what's the", "whats the", "how is", "info on", "details on",
+    "provide", "give me", "show me", "pull up", "check on",
+)
+
+
+def natural_language_customer_lookup(text: str) -> str | None:
+    """Check if text is a natural language customer query. Return cmd_status result or None."""
+    t = text.lower()
+    customers = load_customers()
+    for c in customers:
+        if c["name"].lower() in t:
+            # Check if it looks like a status request, or just mentions the customer
+            if any(trigger in t for trigger in STATUS_TRIGGERS) or "status" in t or "score" in t or "stage" in t:
+                return cmd_status(c["name"])
+    return None
+
+
 def route_command(text: str, user_name: str) -> str | None:
     t = " ".join(text.lower().split())  # normalize all whitespace
 
@@ -186,7 +205,8 @@ def route_command(text: str, user_name: str) -> str | None:
     if t in ("pipeline", "stages", "deployment"):
         return cmd_pipeline()
 
-    return None
+    # Natural language customer lookup
+    return natural_language_customer_lookup(text)
 
 
 # ── AI fallback ──
