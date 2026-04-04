@@ -7,6 +7,9 @@ Slack bot powered by Claude. Part of the AISeal platform.
 import os
 import re
 import json
+import threading
+import time as _time
+from datetime import datetime
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -122,6 +125,133 @@ def build_table(customers):
 
 # ── Lumen commands ──
 
+def days_since(date_str: str) -> int | None:
+    if not date_str:
+        return None
+    try:
+        from datetime import date
+        d = date.fromisoformat(date_str)
+        return (date.today() - d).days
+    except Exception:
+        return None
+
+
+def days_in_stage(stage_since: str) -> str:
+    d = days_since(stage_since)
+    if d is None:
+        return "unknown"
+    return f"{d} days"
+
+
+def cmd_prep(query: str) -> str:
+    """90-second call prep for a customer."""
+    customers = load_customers()
+    matches = [c for c in customers if query.lower() in c["name"].lower()]
+    if not matches:
+        return f"No customer found matching *{query}*."
+    c = matches[0]
+
+    stage = c.get("airs_stage", "Unknown")
+    score = c.get("trustscore")
+    score_str = str(score) if score is not None else "No scan yet"
+    emoji, label = status_label(score)
+    abbr = STAGE_ABBR.get(stage, stage)
+    stage_since = c.get("stage_since", "")
+    in_stage = days_in_stage(stage_since)
+    last_interaction = c.get("last_interaction") or "unknown"
+    days_ago = days_since(last_interaction)
+    last_str = f"{last_interaction} ({days_ago}d ago)" if days_ago is not None else last_interaction
+    next_action = c.get("next_action") or "None set"
+    next_due = c.get("next_action_due") or "No date"
+    due_in = days_since(next_due)
+    due_str = f"{next_due}"
+    if due_in is not None:
+        if due_in < 0:
+            due_str += f" _(in {abs(due_in)} days)_"
+        elif due_in == 0:
+            due_str += " _⚠️ DUE TODAY_"
+        else:
+            due_str += f" _⚠️ OVERDUE {due_in}d_"
+
+    stakeholders = c.get("stakeholders", [])
+    stakeholder_lines = "\n".join(
+        f"  • {s['name']} — {s['role']}" for s in stakeholders
+    ) or "  None on file"
+
+    notes = c.get("notes", "None")
+
+    lines = [
+        f"📋 *CALL PREP — {c['name'].upper()}*",
+        "━" * 44,
+        f"*Stage:* {abbr} — {stage}  _(in stage: {in_stage})_",
+        f"*TrustScore:* {score_str}  {emoji} {label}",
+        f"*Last Interaction:* {last_str}",
+        "",
+        f"*Next Action:* {next_action}",
+        f"*Due:* {due_str}",
+        "",
+        "*Stakeholders:*",
+        stakeholder_lines,
+        "",
+        f"*Notes:* {notes}",
+        "",
+        "_— ARIA!_",
+    ]
+    return "\n".join(lines)
+
+
+def cmd_daily_digest(owner: str = None) -> str:
+    """Morning digest — red/yellow/green accounts with suggested actions."""
+    from datetime import date
+    customers = load_customers()
+    if owner:
+        customers = [c for c in customers if c.get("owner", "").lower() == owner.lower()]
+
+    red, yellow, green = [], [], []
+
+    for c in customers:
+        score = c.get("trustscore")
+        last_scan = c.get("last_scan")
+        next_due = c.get("next_action_due")
+        days_no_scan = days_since(last_scan) if last_scan else 999
+        overdue = False
+        if next_due:
+            d = days_since(next_due)
+            overdue = d is not None and d > 0
+
+        if score is not None and score < 60 or days_no_scan > 20 or overdue:
+            red.append(c)
+        elif score is not None and score < 75 or days_no_scan > 10:
+            yellow.append(c)
+        else:
+            green.append(c)
+
+    today = date.today().strftime("%A, %B %d")
+    lines = [f"☀️ *ARIA DAILY DIGEST — {today}*", "━" * 44, ""]
+
+    if red:
+        lines.append(f"🔴 *Needs Attention ({len(red)})*")
+        for c in red:
+            next_action = c.get("next_action", "No action set")
+            lines.append(f"  • *{c['name']}* — {next_action}")
+        lines.append("")
+
+    if yellow:
+        lines.append(f"⚠️  *Watch ({len(yellow)})*")
+        for c in yellow:
+            lines.append(f"  • *{c['name']}* — Score: {c.get('trustscore', '—')}, last scan: {c.get('last_scan', 'never')}")
+        lines.append("")
+
+    if green:
+        lines.append(f"✅ *On Track ({len(green)})*")
+        for c in green:
+            lines.append(f"  • {c['name']}")
+        lines.append("")
+
+    lines.append("_Use `@ARIA prep <customer>` before any call. — ARIA!_")
+    return "\n".join(lines)
+
+
 def cmd_status(query):
     customers = load_customers()
     matches = [c for c in customers if query.lower() in c["name"].lower()]
@@ -178,11 +308,14 @@ def cmd_pipeline():
 # ── Command router ──
 
 LUMEN_HELP = """*Lumen commands:*
+• `prep <customer>` — 90-second call prep (stage, score, stakeholders, next action)
 • `status <customer>` — deployment stage + TrustScore
 • `my accounts` — your assigned customers
 • `team view` — all accounts across the team
 • `at-risk` — customers below TrustScore 70
 • `pipeline` — all customers by AIRS stage
+• `digest` — daily health summary (red/yellow/green)
+• `/forget` — clear this thread's memory
 • anything else — ask ARIA directly"""
 
 
@@ -213,6 +346,12 @@ def route_command(text: str, user_name: str) -> str | None:
 
     if t in ("whoami", "who am i", "my id"):
         return f"You are `{user_name}` — that's what ARIA sees as your owner ID. Use this in customers.json."
+
+    if t.startswith("prep "):
+        return cmd_prep(text[5:].strip())
+
+    if t in ("digest", "daily digest", "morning digest", "daily", "summary"):
+        return cmd_daily_digest(user_name)
 
     if t.startswith("status "):
         return cmd_status(text[7:].strip())
@@ -375,7 +514,27 @@ def handle_dm(event, say):
     handle_text(text, event["user"], say, personal=True, thread_ts=None)
 
 
+def daily_digest_scheduler():
+    """Post daily digest to #all-bash99 at 8:00 AM every day."""
+    DIGEST_CHANNEL = "#all-bash99"
+    DIGEST_HOUR = 8
+    posted_today = None
+
+    while True:
+        now = datetime.now()
+        if now.hour == DIGEST_HOUR and now.date() != posted_today:
+            try:
+                digest = cmd_daily_digest()
+                app.client.chat_postMessage(channel=DIGEST_CHANNEL, text=digest)
+                posted_today = now.date()
+                print(f"[ARIA] Daily digest posted to {DIGEST_CHANNEL}", flush=True)
+            except Exception as e:
+                print(f"[ARIA] Digest post failed: {e}", flush=True)
+        _time.sleep(60)
+
+
 if __name__ == "__main__":
     print("ARIA! is online.")
+    threading.Thread(target=daily_digest_scheduler, daemon=True).start()
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
