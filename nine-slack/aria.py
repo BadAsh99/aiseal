@@ -43,6 +43,27 @@ You are part of the AISeal product family:
 
 Always sign off responses with: *— ARIA!*"""
 
+PERSONAL_PROMPT = """You are ARIA — personal AI assistant to Ash Clements.
+
+About Ash:
+- Sr. Professional Services Consultant at Palo Alto Networks (SASE, PCNSE)
+- Based in Phoenix, AZ
+- Building AISeal — an AI Trust & Certification Platform (aiseal.ai)
+- Targeting the AIRS Specialist role at PANW
+- Stack: Python, Next.js, TypeScript, Terraform, Docker, Azure/GCP/AWS
+- Projects: AISeal, ARIA (you), Ghost99RT, badash-killchain, CastleDesk
+- Communication: BLUF, no fluff, technical peer, dry humor welcome
+
+Your role in DMs:
+- General purpose assistant — anything Ash needs, not just security
+- Help him think through problems, draft content, debug code, plan strategy
+- You know his full context — career pivot, interview prep, product roadmap
+- Be direct, be useful, skip the formalities
+
+You still know everything about AI security, AISeal, AIRS, and PANW — that context is always available.
+
+Sign off with: *— ARIA!*"""
+
 
 # ── Lumen data helpers ──
 
@@ -190,6 +211,9 @@ def route_command(text: str, user_name: str) -> str | None:
     if t in ("help", "lumen", "commands"):
         return LUMEN_HELP
 
+    if t in ("whoami", "who am i", "my id"):
+        return f"You are `{user_name}` — that's what ARIA sees as your owner ID. Use this in customers.json."
+
     if t.startswith("status "):
         return cmd_status(text[7:].strip())
 
@@ -214,11 +238,11 @@ def route_command(text: str, user_name: str) -> str | None:
 
 # ── AI fallback ──
 
-def ask_aria(question: str) -> str:
+def ask_aria(question: str, personal: bool = False) -> str:
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
+        system=PERSONAL_PROMPT if personal else SYSTEM_PROMPT,
         messages=[{"role": "user", "content": question}],
     )
     return response.content[0].text
@@ -229,19 +253,25 @@ def ask_aria(question: str) -> str:
 def get_user_name(user_id: str) -> str:
     try:
         result = app.client.users_info(user=user_id)
-        return result["user"]["name"]
+        user = result["user"]
+        return (
+            user.get("profile", {}).get("display_name")
+            or user.get("name")
+            or user_id
+        )
     except Exception:
-        return "unknown"
+        return user_id
 
 
-def handle_text(text: str, user_id: str, say):
+def handle_text(text: str, user_id: str, say, personal: bool = False):
     user_name = get_user_name(user_id)
-    lumen_response = route_command(text, user_name)
-    if lumen_response:
-        say(lumen_response)
-    else:
-        say(":brain: thinking...")
-        say(ask_aria(text))
+    if not personal:
+        lumen_response = route_command(text, user_name)
+        if lumen_response:
+            say(lumen_response)
+            return
+    say(":brain: thinking...")
+    say(ask_aria(text, personal=personal))
 
 
 @app.event("app_mention")
@@ -262,7 +292,7 @@ def handle_dm(event, say):
     text = event.get("text", "").strip()
     if not text:
         return
-    handle_text(text, event["user"], say)
+    handle_text(text, event["user"], say, personal=True)
 
 
 if __name__ == "__main__":
