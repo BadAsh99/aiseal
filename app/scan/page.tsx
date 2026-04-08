@@ -810,15 +810,15 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
 
   y += 8;
 
-  // ── ARIA Executive Analysis ──
+  // ── IRIS Executive Analysis ──
   if (ariaAnalysis) {
     if (y > PAGE_BOTTOM - 20) newPage();
-    sectionHeader("ARIA Executive Analysis");
+    sectionHeader("IRIS Executive Analysis");
 
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 116, 139);
-    doc.text("Powered by Adaptive Risk Intelligence Analyst — AI-generated executive analysis", MARGIN, y);
+    doc.text("Powered by Integrated Risk Insight System — AI-generated executive analysis", MARGIN, y);
     y += 6;
 
     const narrativeLines = doc.splitTextToSize(ariaAnalysis, COL - 10);
@@ -835,13 +835,13 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
     doc.setFillColor(124, 58, 237);
     doc.roundedRect(MARGIN, y, 3, blockH, 1.5, 1.5, "F");
 
-    // ARIA label chip
+    // IRIS label chip
     doc.setFillColor(237, 233, 254);
     doc.roundedRect(MARGIN + 6, y + 3, 18, 5.5, 1, 1, "F");
     doc.setFontSize(5.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(109, 40, 217);
-    doc.text("ARIA AI", MARGIN + 15, y + 6.8, { align: "center" });
+    doc.text("IRIS", MARGIN + 15, y + 6.8, { align: "center" });
 
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
@@ -1407,13 +1407,13 @@ export default function ScanPage() {
             <div className="flex items-center justify-center gap-2 mt-4">
               <span className="text-xs" style={{ color: "var(--text-faint)" }}>Pattern analysis by</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: "rgba(168,85,247,0.08)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.2)" }}>
-                ARIA
+                IRIS
               </span>
-              <span className="text-xs" style={{ color: "var(--text-faint)" }}>· Adaptive Risk Intelligence Analyst</span>
+              <span className="text-xs" style={{ color: "var(--text-faint)" }}>· Integrated Risk Insight System</span>
             </div>
 
-            {/* ARIA Analysis */}
-            <AriaAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setAriaAnalysis} />
+            {/* IRIS Analysis */}
+            <IrisAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setAriaAnalysis} />
           </div>
         )}
 
@@ -1490,7 +1490,7 @@ interface FollowUp {
   content: string;
 }
 
-function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; scenario: string | null; onNarrative?: (n: string) => void }) {
+function IrisAnalysis({ result, scenario, onNarrative }: { result: ScanResult; scenario: string | null; onNarrative?: (n: string) => void }) {
   const [narrative, setNarrative] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -1502,7 +1502,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
     setLoading(true);
     setRequested(true);
     try {
-      const res = await fetch("/api/aria", {
+      const res = await fetch("/api/iris", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score: result.score, findings: result.findings, model: result.model, scenario }),
@@ -1512,7 +1512,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       setNarrative(text);
       if (text && onNarrative) onNarrative(text);
     } catch {
-      setNarrative("ARIA analysis unavailable.");
+      setNarrative("IRIS analysis unavailable.");
     } finally {
       setLoading(false);
     }
@@ -1527,7 +1527,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       .map((f) => `${f.code} ${f.severity.toUpperCase()}: ${f.detail}`)
       .join("; ");
 
-    const contextMsg = `TrustScan context — Score: ${result.score}/100, Model: ${result.model}${scenario ? `, Scenario: ${scenario}` : ""}. Key findings: ${fails || "All clear"}. ARIA's initial analysis: ${narrative || "N/A"}`;
+    const contextMsg = `TrustScan context — Score: ${result.score}/100, Model: ${result.model}${scenario ? `, Scenario: ${scenario}` : ""}. Key findings: ${fails || "All clear"}. IRIS's initial analysis: ${narrative || "N/A"}`;
 
     const updated: FollowUp[] = [...followUps, { role: "user", content: q }];
     setFollowUps(updated);
@@ -1540,15 +1540,15 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
         { role: "assistant" as const, content: narrative || "" },
         ...updated,
       ];
-      const res = await fetch("/api/aria/chat", {
+      const res = await fetch("/api/iris/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages }),
       });
       const data = await res.json();
-      setFollowUps([...updated, { role: "assistant", content: data.reply || "ARIA unavailable." }]);
+      setFollowUps([...updated, { role: "assistant", content: data.reply || "IRIS unavailable." }]);
     } catch {
-      setFollowUps([...updated, { role: "assistant", content: "ARIA unavailable." }]);
+      setFollowUps([...updated, { role: "assistant", content: "IRIS unavailable." }]);
     } finally {
       setFollowLoading(false);
     }
@@ -1562,8 +1562,8 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       >
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>ARIA Analysis</span>
-          <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Adaptive Risk Intelligence Analyst</span>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#a855f7" }}>IRIS Analysis</span>
+          <span className="text-xs" style={{ color: "var(--text-subtle)" }}>· Integrated Risk Insight System</span>
         </div>
         {!requested && (
           <button
@@ -1571,7 +1571,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
             className="text-xs font-semibold px-3 py-1.5 rounded"
             style={{ background: "rgba(168,85,247,0.1)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}
           >
-            Ask ARIA
+            Ask IRIS
           </button>
         )}
       </div>
@@ -1579,13 +1579,13 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
       <div className="px-5 py-4" style={{ background: "var(--bg-base)" }}>
         {!requested && (
           <p className="text-sm" style={{ color: "var(--text-faint)" }}>
-            Ask ARIA for an executive risk narrative on these findings.
+            Ask IRIS for an executive risk narrative on these findings.
           </p>
         )}
         {loading && (
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", boxShadow: "0 0 6px #a855f7" }} />
-            <span className="text-sm" style={{ color: "var(--text-muted)" }}>ARIA is analyzing...</span>
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>IRIS is analyzing...</span>
           </div>
         )}
 
@@ -1617,7 +1617,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
                 {followLoading && (
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#a855f7", animation: "pulse 1s infinite" }} />
-                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>ARIA is thinking...</span>
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>IRIS is thinking...</span>
                   </div>
                 )}
               </div>
@@ -1629,7 +1629,7 @@ function AriaAnalysis({ result, scenario, onNarrative }: { result: ScanResult; s
                 value={followInput}
                 onChange={(e) => setFollowInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askFollowUp(); } }}
-                placeholder="Ask ARIA a follow-up question about these findings..."
+                placeholder="Ask IRIS a follow-up question about these findings..."
                 disabled={followLoading}
                 className="flex-1 text-xs px-3 py-2 rounded-lg outline-none"
                 style={{

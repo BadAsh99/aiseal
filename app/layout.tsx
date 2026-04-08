@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Nav from "./components/Nav";
-import AriaChat from "./components/AriaChat";
+import IrisChat from "./components/IrisChat";
 
 const THEME_SCRIPT = `(function(){try{var stored=localStorage.getItem('aiseal-theme');var t=stored||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
@@ -34,7 +34,7 @@ export default function RootLayout({
         >
           &copy; 2026 AISeal — aiseal.ai — All rights reserved
         </footer>
-        <AriaChat />
+        <IrisChat />
       </body>
     </html>
   );
