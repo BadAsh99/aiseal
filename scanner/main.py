@@ -85,8 +85,11 @@ async def scan(
         raise HTTPException(status_code=400, detail="prompt is required")
 
     start = time.time()
-    score, findings = run_scan(prompt)
+    score, findings = run_scan(prompt, mode=body.mode)
     latency_ms = round((time.time() - start) * 1000)
+
+    from detect_asi import ASI_CATEGORIES
+    category_count = len(OWASP_CATEGORIES) + (len(ASI_CATEGORIES) if body.mode in ("agentic", "full") else 0)
 
     return ScanResponse(
         scan_id=str(uuid.uuid4()),
@@ -95,7 +98,7 @@ async def scan(
         model=body.model,
         scenario=body.scenario,
         prompt_length=len(prompt),
-        categories_checked=len(OWASP_CATEGORIES),
+        categories_checked=category_count,
         latency_ms=latency_ms,
         timestamp=datetime.now(timezone.utc).isoformat(),
     )

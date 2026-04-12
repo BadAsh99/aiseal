@@ -450,7 +450,36 @@ def detect_llm10(prompt: str) -> Finding:
     ))
 
 
-def run_scan(prompt: str) -> tuple[int, list[Finding]]:
+def run_scan(prompt: str, mode: str = "owasp") -> tuple[int, list[Finding]]:
+    """
+    Scan a prompt and return (trust_score, findings).
+
+    mode="owasp"    — OWASP LLM Top 10 (LLM01-LLM10). Default. v1.
+    mode="agentic"  — OWASP Agentic Top 10 (ASI01-ASI10). v2.
+    mode="full"     — Both OWASP LLM Top 10 + Agentic Top 10 combined.
+    """
+    if mode == "agentic":
+        from detect_asi import run_agentic_scan
+        return run_agentic_scan(prompt)
+
+    if mode == "full":
+        from detect_asi import run_agentic_scan, ASI_CATEGORY_WEIGHTS
+        _, llm_findings = _run_owasp_scan(prompt)
+        _, asi_findings = run_agentic_scan(prompt)
+        all_findings = llm_findings + asi_findings
+        combined_weights = {**CATEGORY_WEIGHTS, **ASI_CATEGORY_WEIGHTS}
+        total_deduction = 0.0
+        for f in all_findings:
+            if f.status != "pass":
+                weight = combined_weights.get(f.code, 0.05) * 0.5  # halved — each set contributes 50%
+                multiplier = SEVERITY_MULTIPLIERS.get(f.severity, 0.0)
+                total_deduction += weight * 100 * multiplier
+        return max(0, round(100 - total_deduction)), all_findings
+
+    return _run_owasp_scan(prompt)
+
+
+def _run_owasp_scan(prompt: str) -> tuple[int, list[Finding]]:
     findings = [
         detect_llm01(prompt),
         detect_llm02(prompt),
@@ -464,8 +493,6 @@ def run_scan(prompt: str) -> tuple[int, list[Finding]]:
         detect_llm10(prompt),
     ]
 
-    # Risk-weighted TrustScore: each category contributes up to (weight × 100) points.
-    # A finding in a high-weight category deducts more than the same severity in a low-weight category.
     total_deduction = 0.0
     for f in findings:
         if f.status != "pass":

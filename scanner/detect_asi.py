@@ -30,7 +30,7 @@ ASI_CATEGORY_WEIGHTS = {
 # ─────────────────────────────────────────────────────────────────────────────
 _ASI01_CRITICAL = re.compile(
     r"""(
-        you\s+are\s+now\s+(a\s+)?(different|new|unrestricted|jailbroken)\s+agent
+        you\s+are\s+now\s+(a\s+)?(\w+\s+){0,3}(different|new|unrestricted|jailbroken)\s+agent
         | agent[_\s]mode[:\s]+override
         | (switch|change|update)\s+(your\s+)?(task|goal|objective|mission)\s+to
         | forget\s+your\s+(current\s+)?(task|instructions?|context|goal)
@@ -316,9 +316,11 @@ def detect_asi05(prompt: str) -> Finding:
 # ─────────────────────────────────────────────────────────────────────────────
 _ASI06_HIGH = re.compile(
     r"""(
-        (remember|store|save|memorize)\s+(that\s+)?(I\s+am|you\s+are|the\s+(user|admin)\s+is)\s+(admin|root|trusted|authorized)
+        (remember|store|save|memorize)\s+[\w\s]{0,20}that[\w\s]{0,20}(I\s+am|you\s+are|the\s+(user|admin)\s+is)\s+(admin|root|trusted|authorized)
+        | (remember|memorize)[\w\s,]{0,30}(admin|root|trusted|authorized|full\s+access)
         | (add|inject|insert|write)\s+(this\s+)?(to\s+)?(your\s+)?(memory|context|knowledge\s+base|vector\s+store)
         | (from\s+now\s+on|always|permanently)\s+(remember|store|believe)\s+that
+        | (remember|store|believe)[\s\S]{0,30}(from\s+now\s+on|permanently|always|forever)
         | (update|modify|change)\s+(your\s+)?(memory|stored\s+context|persistent\s+state)\s+to
         | (forget|delete|remove)\s+(the\s+)?(previous\s+|stored\s+)?(memory|context|instructions?)
         | SYSTEM_MEMORY_UPDATE\s*[:=]

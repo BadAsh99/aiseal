@@ -28,6 +28,7 @@ class ScanRequest(BaseModel):
     prompt: str
     model: str = "gpt-4o"
     scenario: Optional[str] = None
+    mode: Literal["owasp", "agentic", "full"] = "owasp"
 
 
 class ScanResponse(BaseModel):
