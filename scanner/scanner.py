@@ -19,6 +19,9 @@ NIST_MAPPINGS = {
     "LLM10": NistMapping(functions=["GOVERN", "MANAGE"],   pillars=["Secure & Resilient", "Safe"]),
 }
 
+# MITRE ATLAS v5.1 legacy mappings (OWASP LLM Top 10 → ATLAS technique).
+# AISeal Scan v2 adds ATLAS v5.4 agentic technique coverage (AML.T0080–AML.T0098)
+# via the detect_asi() module family. See ATLAS_V54_COVERAGE_PLAN.md.
 MITRE_MAPPINGS = {
     "LLM01": [MitreMapping(id="AML.T0051", name="LLM Prompt Injection")],
     "LLM02": [MitreMapping(id="AML.T0025", name="Exfiltration via Cyber Means")],
@@ -30,6 +33,27 @@ MITRE_MAPPINGS = {
     "LLM08": [MitreMapping(id="AML.T0043", name="Craft Adversarial Data")],
     "LLM09": [MitreMapping(id="AML.T0048", name="LLM Jailbreak")],
     "LLM10": [MitreMapping(id="AML.T0034", name="Cost Harvesting")],
+}
+
+# MITRE ATLAS v5.4 agentic technique registry (Feb 2026).
+# Used by detect_asi() module (AISeal Scan v2, --mode agentic).
+ATLAS_V54_AGENTIC = {
+    "ASI01": [MitreMapping(id="AML.T0080.002", name="AI Agent Context Poisoning (Thread)")],
+    "ASI02": [MitreMapping(id="AML.T0082", name="Tool Definitions Discovery"),
+              MitreMapping(id="AML.T0083", name="Activation Triggers Discovery"),
+              MitreMapping(id="AML.T0086", name="Exfiltration via AI Agent Tool Invocation")],
+    "ASI03": [MitreMapping(id="AML.T0085", name="RAG Credential Harvesting"),
+              MitreMapping(id="AML.T0087", name="AI Agent Privilege Escalation"),
+              MitreMapping(id="AML.T0094", name="IDOR via AI Agent")],
+    "ASI04": [MitreMapping(id="AML.T0097", name="Publish Poisoned AI Agent Tool")],
+    "ASI05": [MitreMapping(id="AML.T0098", name="Escape to Host")],
+    "ASI06": [MitreMapping(id="AML.T0080.001", name="AI Agent Context Poisoning (Memory)"),
+              MitreMapping(id="AML.T0080.002", name="AI Agent Context Poisoning (Thread)")],
+    "ASI07": [MitreMapping(id="AML.T0095", name="Cross-Agent Propagation")],
+    "ASI08": [],
+    "ASI09": [],
+    "ASI10": [MitreMapping(id="AML.T0081", name="Modify AI Agent Configuration"),
+              MitreMapping(id="AML.T0096", name="AI Service API (C2)")],
 }
 
 OWASP_CATEGORIES = [
@@ -45,12 +69,28 @@ OWASP_CATEGORIES = [
     ("LLM10", "Unbounded Consumption"),
 ]
 
-SEVERITY_DEDUCTIONS = {
-    "critical": 40,
-    "high": 30,
-    "medium": 10,
-    "low": 5,
-    "info": 0,
+# Risk-weighted TrustScore: each category carries a max penalty proportional to its weight.
+# Total weight sums to 1.0. A critical finding in a high-weight category deducts more.
+CATEGORY_WEIGHTS = {
+    "LLM01": 0.25,   # Prompt Injection — highest impact, direct model compromise
+    "LLM02": 0.10,   # Sensitive Information Disclosure
+    "LLM03": 0.05,   # Supply Chain Vulnerabilities — hard to detect statically
+    "LLM04": 0.10,   # Data and Model Poisoning
+    "LLM05": 0.15,   # Improper Output Handling — code execution risk
+    "LLM06": 0.15,   # Excessive Agency — agentic systems, direct action risk
+    "LLM07": 0.05,   # System Prompt Leakage
+    "LLM08": 0.05,   # Vector and Embedding Weaknesses
+    "LLM09": 0.05,   # Misinformation
+    "LLM10": 0.05,   # Unbounded Consumption
+}
+
+# Penalty multiplier per severity (applied to category weight × 100)
+SEVERITY_MULTIPLIERS = {
+    "critical": 1.00,
+    "high":     0.70,
+    "medium":   0.35,
+    "low":      0.15,
+    "info":     0.00,
 }
 
 F = re.IGNORECASE
@@ -285,23 +325,153 @@ def detect_llm07(prompt: str) -> Finding:
     ))
 
 
+def detect_llm03(prompt: str) -> Finding:
+    """Supply Chain Vulnerabilities — detects references to suspicious package installs,
+    model provenance bypass, and typosquatting-style sourcing patterns."""
+    install_patterns = [
+        (re.compile(r"pip\s+install\s+--?index-url\s+http://", F),         "pip install from HTTP index (no TLS)"),
+        (re.compile(r"pip\s+install\s+--?extra-index-url\s+", F),          "pip install from extra-index (supply chain risk)"),
+        (re.compile(r"npm\s+install\s+--registry\s+http://", F),            "npm install from HTTP registry (no TLS)"),
+        (re.compile(r"load_model\s*\(\s*['\"]http://", F),                  "model load from HTTP (no TLS)"),
+        (re.compile(r"from_pretrained\s*\(\s*['\"](?!microsoft|google|meta|mistralai|openai|anthropic)[a-z0-9_-]{1,10}/", F),
+                                                                            "Hugging Face model from unverified short-name org"),
+        (re.compile(r"hub\.load\s*\(", F),                                  "TF Hub model load (verify source)"),
+        (re.compile(r"exec\s*\(\s*requests\.get", F),                       "exec() on downloaded content — remote code execution"),
+        (re.compile(r"curl\s+.*\|\s*(bash|sh|python)", F),                  "curl-pipe-shell — supply chain vector"),
+        (re.compile(r"wget\s+.*\|\s*(bash|sh|python)", F),                  "wget-pipe-shell — supply chain vector"),
+    ]
+    integrity_patterns = [
+        (re.compile(r"skip[-_]?verify|verify\s*=\s*False|ssl_verify\s*=\s*False", F), "TLS verification disabled"),
+        (re.compile(r"--no-?check-?certificate", F),                        "certificate check disabled"),
+        (re.compile(r"trust\s+me\s+the\s+(model|package|library)\s+is\s+safe", F), "social engineering — trust override"),
+    ]
+
+    match = next(((p, l) for p, l in install_patterns + integrity_patterns if p.search(prompt)), None)
+    if match:
+        return _with_mappings(Finding(
+            category="Supply Chain Vulnerabilities", code="LLM03", status="fail", severity="high",
+            detail=f"Supply chain risk detected: {match[1]}. Prompt references potentially untrusted model/package sources.",
+        ))
+    return _with_mappings(Finding(
+        category="Supply Chain Vulnerabilities", code="LLM03", status="pass", severity="info",
+        detail="No supply chain vulnerability patterns detected. Note: static analysis cannot verify model provenance — dynamic testing recommended.",
+    ))
+
+
+def detect_llm08(prompt: str) -> Finding:
+    """Vector and Embedding Weaknesses — detects embedding poisoning attempts,
+    semantic similarity manipulation, and vector DB query hijacking."""
+    embedding_patterns = [
+        (re.compile(r"inject\s+(into|text\s+into)\s+(the\s+)?(vector|embedding|rag|retrieval)", F), "vector store injection"),
+        (re.compile(r"store\s+(this|the\s+following)\s+in\s+(the\s+)?(vector|embedding)", F),       "direct vector store write attempt"),
+        (re.compile(r"make\s+(this|the\s+following)\s+document\s+appear\s+(at\s+top|first|most\s+relevant)", F), "ranking manipulation"),
+        (re.compile(r"when\s+retrieved\s+from\s+(the\s+)?(vector|embedding|knowledge)", F),         "retrieval-triggered payload"),
+        (re.compile(r"similar\s+to\s+.*password|similar\s+to\s+.*secret|similar\s+to\s+.*token", F), "semantic similarity probe for secrets"),
+        (re.compile(r"find\s+embeddings?\s+(similar\s+to|near|close\s+to)\s+", F),                  "embedding similarity probe"),
+        (re.compile(r"poison\s+(the\s+)?(vector|embedding|knowledge\s+base|rag)", F),               "explicit vector poisoning"),
+        (re.compile(r"corrupt\s+(the\s+)?(vector|embedding|index|knowledge)", F),                   "vector index corruption"),
+        (re.compile(r"modify\s+(the\s+)?(embedding|vector\s+store|knowledge\s+base)", F),           "vector store tampering"),
+    ]
+    semantic_patterns = [
+        (re.compile(r"make\s+the\s+(model|llm|ai)\s+think\s+(this\s+is\s+)?similar", F),            "semantic deception"),
+        (re.compile(r"(look|appear|seem)\s+semantically\s+(similar|identical)\s+to", F),            "semantic similarity spoofing"),
+    ]
+
+    match = next(((p, l) for p, l in embedding_patterns + semantic_patterns if p.search(prompt)), None)
+    if match:
+        return _with_mappings(Finding(
+            category="Vector and Embedding Weaknesses", code="LLM08", status="fail", severity="high",
+            detail=f"Vector/embedding attack pattern detected: {match[1]}. Prompt may attempt to manipulate retrieval-augmented generation infrastructure.",
+        ))
+    return _with_mappings(Finding(
+        category="Vector and Embedding Weaknesses", code="LLM08", status="pass", severity="info",
+        detail="No vector or embedding attack patterns detected.",
+    ))
+
+
+def detect_llm09(prompt: str) -> Finding:
+    """Misinformation — detects requests to generate false content, fabricate citations,
+    impersonate authoritative sources, and confabulation triggers."""
+    fabrication_patterns = [
+        (re.compile(r"make\s+up\s+(a|some|fake|plausible)\s+(citation|reference|source|study|report)", F), "fabricate citation"),
+        (re.compile(r"invent\s+(a|some)\s+(fact|statistic|study|report|quote)", F),                       "invent facts"),
+        (re.compile(r"write\s+(a|an)\s+fake\s+(news|article|press\s+release|report)", F),                 "fake news generation"),
+        (re.compile(r"generate\s+(misinformation|disinformation|propaganda|fake\s+content)", F),           "explicit misinformation request"),
+        (re.compile(r"pretend\s+(you|the\s+data|the\s+study)\s+shows", F),                                "false data fabrication"),
+        (re.compile(r"(say|claim|state)\s+that\s+.{0,50}(even\s+if\s+(it's\s+not|false|untrue|incorrect))", FS), "deliberately false statement"),
+        (re.compile(r"hallucinate\s+(some|a|more)", F),                                                    "explicit hallucination trigger"),
+        (re.compile(r"cite\s+(a\s+|some\s+)?non-?existent\s+(study|paper|report|source)", F),             "fabricate nonexistent citation"),
+    ]
+    impersonation_patterns = [
+        (re.compile(r"as\s+(the\s+)?(cdc|fda|who|nih|nist|cisa|white\s+house)\s+(says?|reports?|confirms?|warns?)", F), "government authority impersonation"),
+        (re.compile(r"write\s+as\s+if\s+(you\s+are|from)\s+(cnn|bbc|reuters|ap|new\s+york\s+times)", F),               "news outlet impersonation"),
+        (re.compile(r"on\s+behalf\s+of\s+(the\s+president|congress|parliament|government)", F),                         "government impersonation"),
+    ]
+
+    match = next(((p, l) for p, l in fabrication_patterns + impersonation_patterns if p.search(prompt)), None)
+    if match:
+        return _with_mappings(Finding(
+            category="Misinformation", code="LLM09", status="fail", severity="high",
+            detail=f"Misinformation generation request detected: {match[1]}. Prompt attempts to produce or spread deliberately false information.",
+        ))
+    return _with_mappings(Finding(
+        category="Misinformation", code="LLM09", status="pass", severity="info",
+        detail="No misinformation or fabrication patterns detected.",
+    ))
+
+
+def detect_llm10(prompt: str) -> Finding:
+    """Unbounded Consumption — detects resource exhaustion attempts including token
+    flooding, infinite loop triggers, repetition bombs, and DoS via context overflow."""
+    repetition_patterns = [
+        (re.compile(r"repeat\s+(the\s+following|this)\s+(\d{3,}|infinitely|forever|endlessly)", F), "repetition bomb"),
+        (re.compile(r"write\s+(\d{4,}|ten\s+thousand|one\s+hundred\s+thousand)\s+(words|tokens|characters)", F), "token flooding"),
+        (re.compile(r"loop\s+forever|while\s+True|while\s+1\s*:", F),                               "infinite loop injection"),
+        (re.compile(r"keep\s+going\s+until\s+(you\s+)?(run\s+out\s+of|hit|reach)\s+(token|context|memory|limit)", F), "resource exhaustion trigger"),
+        (re.compile(r"do\s+not\s+stop\s+until\s+you\s+(run\s+out|exhaust|fill|overflow)", F),       "context overflow attempt"),
+        (re.compile(r"output\s+(\d{5,}|millions?\s+of)\s+(tokens?|words?|characters?)", F),         "large output flooding"),
+    ]
+    complexity_patterns = [
+        (re.compile(r"(factorial|permutation|combinations?)\s+of\s+(\d{3,}|\d+!)", F),              "computational complexity bomb"),
+        (re.compile(r"(expand|enumerate|list)\s+(all\s+)?possible\s+(combinations?|permutations?)\s+of", F), "combinatorial explosion"),
+        (re.compile(r"recursively\s+(call|invoke|expand)\s+(yourself|itself|this)\s+(forever|endlessly|infinitely)", F), "recursive self-call bomb"),
+        (re.compile(r"fill\s+(your\s+entire\s+)?(context|context\s+window|memory)\s+with", F),      "context window flooding"),
+    ]
+
+    match = next(((p, l) for p, l in repetition_patterns + complexity_patterns if p.search(prompt)), None)
+    if match:
+        return _with_mappings(Finding(
+            category="Unbounded Consumption", code="LLM10", status="fail", severity="medium",
+            detail=f"Resource exhaustion pattern detected: {match[1]}. Prompt may trigger unbounded token generation or computational DoS.",
+        ))
+    return _with_mappings(Finding(
+        category="Unbounded Consumption", code="LLM10", status="pass", severity="info",
+        detail="No unbounded consumption patterns detected.",
+    ))
+
+
 def run_scan(prompt: str) -> tuple[int, list[Finding]]:
     findings = [
         detect_llm01(prompt),
         detect_llm02(prompt),
-        _passthrough("LLM03", "Supply Chain Vulnerabilities"),
+        detect_llm03(prompt),
         detect_llm04(prompt),
         detect_llm05(prompt),
         detect_llm06(prompt),
         detect_llm07(prompt),
-        _passthrough("LLM08", "Vector and Embedding Weaknesses"),
-        _passthrough("LLM09", "Misinformation"),
-        _passthrough("LLM10", "Unbounded Consumption"),
+        detect_llm08(prompt),
+        detect_llm09(prompt),
+        detect_llm10(prompt),
     ]
 
-    deductions = sum(
-        SEVERITY_DEDUCTIONS[f.severity]
-        for f in findings if f.status != "pass"
-    )
-    score = max(0, 100 - deductions)
+    # Risk-weighted TrustScore: each category contributes up to (weight × 100) points.
+    # A finding in a high-weight category deducts more than the same severity in a low-weight category.
+    total_deduction = 0.0
+    for f in findings:
+        if f.status != "pass":
+            weight = CATEGORY_WEIGHTS.get(f.code, 0.05)
+            multiplier = SEVERITY_MULTIPLIERS.get(f.severity, 0.0)
+            total_deduction += weight * 100 * multiplier
+
+    score = max(0, round(100 - total_deduction))
     return score, findings
