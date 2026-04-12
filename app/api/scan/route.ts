@@ -4,7 +4,7 @@ const SCANNER_URL = process.env.SCANNER_API_URL ?? "http://localhost:8000";
 const SCANNER_KEY = process.env.SCANNER_API_KEY ?? "";
 
 export async function POST(req: NextRequest) {
-  let body: { prompt?: string; model?: string; scenario?: string };
+  let body: { prompt?: string; model?: string; scenario?: string; mode?: "owasp" | "agentic" | "full" };
   try {
     body = await req.json();
   } catch {
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
         prompt,
         model: body.model ?? "claude-sonnet-4-6",
         scenario: body.scenario ?? null,
+        mode: body.mode ?? "owasp",
       }),
     });
 
