@@ -180,30 +180,40 @@ const NIST_RMF_MAP: Record<string, { functions: string[]; property: string }> = 
   LLM10: { functions: ["GOVERN", "MANAGE"],  property: "Safe" },
 };
 
-function scoreColor(score: number): string {
-  // Smooth gradient: 0=red, 50=amber, 100=green — no hard cutoffs
-  const s = Math.max(0, Math.min(100, score));
-  if (s <= 50) {
-    const t = s / 50;
-    const r = Math.round(248 + (245 - 248) * t);
-    const g = Math.round(81  + (158 - 81)  * t);
-    const b = Math.round(73  + (11  - 73)  * t);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const t = (s - 50) / 50;
-    const r = Math.round(245 + (0   - 245) * t);
-    const g = Math.round(158 + (200 - 158) * t);
-    const b = Math.round(11  + (83  - 11)  * t);
-    return `rgb(${r},${g},${b})`;
-  }
+type RiskTier = "critical" | "high" | "medium" | "low";
+
+function riskTier(score: number, findings?: Finding[]): RiskTier {
+  const hasCritical = findings?.some((f) => f.status === "fail" && f.severity === "critical");
+  const hasHigh     = findings?.some((f) => f.status === "fail" && f.severity === "high");
+  const hasFail     = findings?.some((f) => f.status === "fail");
+  const hasWarn     = findings?.some((f) => f.status === "warning");
+
+  if (hasCritical || score < 40)            return "critical";
+  if (hasHigh     || score < 60)            return "high";
+  if (hasFail || hasWarn || score < 75)     return "medium";
+  return "low";
+}
+
+const TIER_COLORS: Record<RiskTier, string> = {
+  critical: "#f85149",
+  high:     "#fb923c",
+  medium:   "#f59e0b",
+  low:      "#00c853",
+};
+
+const TIER_LABELS: Record<RiskTier, string> = {
+  critical: "CRITICAL RISK",
+  high:     "HIGH RISK",
+  medium:   "MEDIUM RISK",
+  low:      "LOW RISK",
+};
+
+function scoreColor(score: number, findings?: Finding[]): string {
+  return TIER_COLORS[riskTier(score, findings)];
 }
 
 function scoreLabel(score: number, findings?: Finding[]): string {
-  const hasHighOrCritical = findings?.some((f) => f.status === "fail" && (f.severity === "critical" || f.severity === "high"));
-  const hasFail = findings?.some((f) => f.status === "fail");
-  if (hasHighOrCritical || score < 40) return "HIGH RISK";
-  if (hasFail || score < 70) return "MEDIUM RISK";
-  return "LOW RISK";
+  return TIER_LABELS[riskTier(score, findings)];
 }
 
 function statusBadge(status: Finding["status"]) {
@@ -240,7 +250,7 @@ function severityBadge(severity: Finding["severity"]) {
 }
 
 function TrustScoreCircle({ score, findings }: { score: number; findings?: Finding[] }) {
-  const color = scoreColor(score);
+  const color = scoreColor(score, findings);
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
@@ -359,18 +369,22 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
   let pageNum = 1;
 
   const riskLabel = scoreLabel(result.score, result.findings);
+  const tier = riskTier(result.score, result.findings);
   const riskRGB: [number, number, number] =
-    riskLabel === "HIGH RISK"   ? [220, 38, 38]  :
-    riskLabel === "MEDIUM RISK" ? [217, 119, 6]  :
-                                   [22, 163, 74];
+    tier === "critical" ? [153, 27,  27]  :
+    tier === "high"     ? [194, 65,   0]  :
+    tier === "medium"   ? [217, 119,  6]  :
+                          [22,  163, 74];
   const riskBgRGB: [number, number, number] =
-    riskLabel === "HIGH RISK"   ? [254, 242, 242] :
-    riskLabel === "MEDIUM RISK" ? [255, 251, 235] :
-                                   [240, 253, 244];
+    tier === "critical" ? [254, 226, 226] :
+    tier === "high"     ? [255, 237, 213] :
+    tier === "medium"   ? [255, 251, 235] :
+                          [240, 253, 244];
   const riskBorderRGB: [number, number, number] =
-    riskLabel === "HIGH RISK"   ? [254, 202, 202] :
-    riskLabel === "MEDIUM RISK" ? [253, 230, 138] :
-                                   [187, 247, 208];
+    tier === "critical" ? [252, 165, 165] :
+    tier === "high"     ? [253, 186, 116] :
+    tier === "medium"   ? [253, 230, 138] :
+                          [187, 247, 208];
 
   const generated = new Date(result.timestamp).toLocaleString("en-US", {
     year: "numeric", month: "long", day: "numeric",
