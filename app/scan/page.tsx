@@ -1071,6 +1071,7 @@ function MitreAtlasSection({ findings }: { findings: Finding[] }) {
 export default function ScanPage() {
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("claude-sonnet-4-6");
+  const [mode, setMode] = useState("owasp");
   const [result, setResult] = useState<ScanResult | null>(EXAMPLE_RESULT);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1089,7 +1090,7 @@ export default function ScanPage() {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), model }),
+        body: JSON.stringify({ prompt: prompt.trim(), model, mode }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1205,6 +1206,29 @@ export default function ScanPage() {
                     {m.label}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label
+                className="text-xs font-semibold mb-1.5 block"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Scan Mode
+              </label>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                style={{
+                  background: "var(--bg-base)",
+                  border: "1px solid var(--border-mid)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <option value="owasp">OWASP LLM Top 10</option>
+                <option value="agentic">Agentic AI (ASI)</option>
+                <option value="full">Full Scan</option>
               </select>
             </div>
 

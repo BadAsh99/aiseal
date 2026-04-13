@@ -444,6 +444,9 @@ function runScan(prompt: string): { score: number; findings: Finding[] } {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  const VALID_MODES = ["owasp", "agentic", "full"] as const;
+  type ScanMode = typeof VALID_MODES[number];
+
   let body: { prompt?: string; model?: string; scenario?: string; mode?: string };
   try {
     body = await req.json();
@@ -456,6 +459,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
 
+  const rawMode = body.mode ?? "owasp";
+  const mode: ScanMode = VALID_MODES.includes(rawMode as ScanMode) ? (rawMode as ScanMode) : "owasp";
+
   const t0 = Date.now();
   const { score, findings } = runScan(prompt);
   const latency_ms = Date.now() - t0;
@@ -466,6 +472,7 @@ export async function POST(req: NextRequest) {
     findings,
     model: body.model ?? "claude-sonnet-4-6",
     scenario: body.scenario ?? null,
+    mode,
     prompt_length: prompt.length,
     categories_checked: findings.length,
     latency_ms,
