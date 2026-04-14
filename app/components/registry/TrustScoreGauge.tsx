@@ -121,7 +121,7 @@ export default function TrustScoreGauge({ score, size = 200, animated = true }: 
         {/* Track */}
         <path
           d={trackPath}
-          stroke="#1a1a1a"
+          stroke="var(--border-subtle, #1a1a1a)"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           fill="none"

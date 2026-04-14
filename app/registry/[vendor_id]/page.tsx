@@ -310,22 +310,23 @@ export default async function VendorCertPage({
 
             {/* Download cert PDF */}
             <div className="flex flex-wrap gap-3">
-              <a
-                href={`/api/cert/${cert.cert_id}/pdf`}
+              <span
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold"
                 style={{
                   background: "var(--bg-surface)",
-                  color: "var(--text-primary)",
+                  color: "var(--text-muted)",
                   border: "1px solid var(--border-mid)",
-                  textDecoration: "none",
+                  opacity: 0.6,
+                  cursor: "default",
                 }}
+                title="PDF export coming soon"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <path d="M12 16L12 4M12 16L8 12M12 16L16 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M4 20H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
-                Download Certificate PDF
-              </a>
+                Certificate PDF — Coming Soon
+              </span>
               <Link
                 href="/registry"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold"

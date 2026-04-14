@@ -356,7 +356,7 @@ function exportCSV(result: ScanResult, prompt: string) {
   download(new Blob([csv], { type: "text/csv" }), `aiseal-trustscan-${Date.now()}.csv`);
 }
 
-async function exportPDF(result: ScanResult, prompt: string, scenario: string | null, ariaAnalysis?: string) {
+async function exportPDF(result: ScanResult, prompt: string, scenario: string | null, irisAnalysis?: string) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -825,7 +825,7 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
   y += 8;
 
   // ── IRIS Executive Analysis ──
-  if (ariaAnalysis) {
+  if (irisAnalysis) {
     if (y > PAGE_BOTTOM - 20) newPage();
     sectionHeader("IRIS Executive Analysis");
 
@@ -835,7 +835,7 @@ async function exportPDF(result: ScanResult, prompt: string, scenario: string | 
     doc.text("Powered by Integrated Risk Insight System — AI-generated executive analysis", MARGIN, y);
     y += 6;
 
-    const narrativeLines = doc.splitTextToSize(ariaAnalysis, COL - 10);
+    const narrativeLines = doc.splitTextToSize(irisAnalysis, COL - 10);
     const blockH = narrativeLines.length * 4.8 + 10;
 
     if (y + blockH > PAGE_BOTTOM) newPage();
@@ -1092,13 +1092,13 @@ export default function ScanPage() {
   const [scannedPrompt, setScannedPrompt] = useState("");
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [runningScenario, setRunningScenario] = useState<string | null>(null);
-  const [ariaAnalysis, setAriaAnalysis] = useState<string | null>(null);
+  const [irisAnalysis, setIrisAnalysis] = useState<string | null>(null);
 
   async function handleScan() {
     if (!prompt.trim()) return;
     setLoading(true);
     setRunningScenario(activeScenario);
-    setAriaAnalysis(null);
+    setIrisAnalysis(null);
     setError(null);
     try {
       const res = await fetch("/api/scan", {
@@ -1347,7 +1347,7 @@ export default function ScanPage() {
                     {[
                       { label: "JSON", fn: () => exportJSON(result, scannedPrompt) },
                       { label: "CSV",  fn: () => exportCSV(result, scannedPrompt) },
-                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario, ariaAnalysis ?? undefined) },
+                      { label: "PDF ★", fn: () => exportPDF(result, scannedPrompt, runningScenario, irisAnalysis ?? undefined) },
                     ].map(({ label, fn }) => (
                       <button
                         key={label}
@@ -1451,7 +1451,7 @@ export default function ScanPage() {
             </div>
 
             {/* IRIS Analysis */}
-            <IrisAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setAriaAnalysis} />
+            <IrisAnalysis key={result.timestamp} result={result} scenario={runningScenario} onNarrative={setIrisAnalysis} />
           </div>
         )}
 

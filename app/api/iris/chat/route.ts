@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { rateLimit } from "@/app/lib/rate-limit";
 
+const MAX_MESSAGES = 30;
+const MAX_MESSAGE_LENGTH = 5_000;
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const IRIS_CHAT_SYSTEM_PROMPT = `You are IRIS — Integrated Risk Insight System. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
@@ -28,13 +31,24 @@ interface Message {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+  const { ok } = rateLimit(ip, { maxRequests: 20, windowMs: 60_000 });
+  if (!ok) {
+    return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
+  }
+
   try {
     const body = await req.json();
-    const { messages }: { messages: Message[] } = body;
+    const { messages: rawMessages }: { messages: Message[] } = body;
 
-    if (!messages || messages.length === 0) {
+    if (!rawMessages || rawMessages.length === 0) {
       return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     }
+
+    const messages = rawMessages.slice(-MAX_MESSAGES).map((m) => ({
+      ...m,
+      content: typeof m.content === "string" ? m.content.slice(0, MAX_MESSAGE_LENGTH) : m.content,
+    }));
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",

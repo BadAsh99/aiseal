@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Nav() {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const links = [
     { href: "/scan", label: "TrustScan" },
@@ -15,7 +17,7 @@ export default function Nav() {
 
   return (
     <nav
-      className="flex items-center justify-between px-8 py-4"
+      className="flex items-center justify-between px-4 sm:px-8 py-4 relative"
       style={{
         background: "var(--bg-surface)",
         borderBottom: "1px solid var(--border-mid)",
@@ -34,7 +36,8 @@ export default function Nav() {
         </span>
       </Link>
 
-      <div className="flex items-center gap-4">
+      {/* Desktop nav */}
+      <div className="hidden sm:flex items-center gap-4">
         <div className="flex items-center gap-6">
           {links.map((link) => (
               <Link
@@ -65,6 +68,57 @@ export default function Nav() {
         </div>
         <ThemeToggle />
       </div>
+
+      {/* Mobile hamburger */}
+      <div className="flex sm:hidden items-center gap-3">
+        <ThemeToggle />
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle menu"
+          className="p-1"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            {mobileOpen
+              ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+              : <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>}
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <div
+          className="absolute top-full left-0 right-0 flex flex-col gap-1 p-4 sm:hidden"
+          style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-mid)" }}
+        >
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMobileOpen(false)}
+              className="text-sm font-medium py-2 px-3 rounded-md transition-colors"
+              style={{
+                color: pathname === link.href ? "#0080ff" : "var(--text-muted)",
+                textDecoration: "none",
+                background: pathname === link.href ? "rgba(0,128,255,0.08)" : "transparent",
+              }}
+            >
+              {link.label}
+            </Link>
+          ))}
+          {pathname !== "/scan" && (
+            <a
+              href="/scan"
+              onClick={() => setMobileOpen(false)}
+              className="text-sm font-semibold py-2 px-3 rounded-md mt-1 text-center"
+              style={{ background: "#0080ff", color: "#ffffff", textDecoration: "none" }}
+            >
+              Run Scan
+            </a>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

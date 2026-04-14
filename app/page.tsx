@@ -124,8 +124,8 @@ export default function Home() {
               title="AISeal Monitor"
               badge="Coming Soon"
               description="Behavioral proxy for production LLM traffic. Real-time anomaly detection, prompt injection alerts, and full audit logging."
-              cta="Join Waitlist"
-              href="/scan"
+              cta="Preview Demo"
+              href="/monitor"
               accent="#a855f7"
             />
             <ProductCard

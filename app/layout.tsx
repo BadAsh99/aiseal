@@ -14,6 +14,19 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "AISeal — AI You Can Trust",
   description: "The first AI security trust and certification platform. Scan it. Monitor it. Certify it.",
+  metadataBase: new URL("https://aiseal.ai"),
+  openGraph: {
+    title: "AISeal — AI You Can Trust",
+    description: "Scan, monitor, and certify AI systems. OWASP LLM Top 10 scanner, runtime behavioral monitoring, and third-party certification.",
+    url: "https://aiseal.ai",
+    siteName: "AISeal",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AISeal — AI You Can Trust",
+    description: "Scan, monitor, and certify AI systems.",
+  },
 };
 
 export default function RootLayout({

@@ -231,7 +231,7 @@ export default function MonitorPage() {
                     gridTemplateColumns: "70px 130px 1fr 90px 65px",
                     gap: "0.75rem",
                     padding: "0.65rem 1rem",
-                    borderBottom: "1px solid #0f0f0f",
+                    borderBottom: "1px solid var(--border-subtle, #0f0f0f)",
                     background: isNew
                       ? e.status === "BLOCK"
                         ? "rgba(248,81,73,0.05)"

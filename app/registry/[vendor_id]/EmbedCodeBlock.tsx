@@ -13,12 +13,13 @@ interface EmbedCodeBlockProps {
 export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedCodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
+  const tierColor = tier === "ACF-3" ? "%23d4a017" : tier === "ACF-2" ? "%230080ff" : "%2300c853";
+  const shieldSvg = `https://img.shields.io/badge/AISeal-${tier}%20%7C%20${score}%2F100-${tierColor.replace("%23","")}?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMyA3djZjMCA1LjU1IDMuODQgMTAuNzQgOSAxMiA1LjE2LTEuMjYgOS02LjQ1IDktMTJWN2wtOS01eiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=`;
   const embedHtml = `<a href="https://aiseal.ai/registry/${vendorId}" target="_blank" rel="noopener noreferrer" title="AISeal ${tier} Certificate — TrustScore ${score}/100">
   <img
-    src="https://aiseal.ai/badges/${certId}.svg"
+    src="${shieldSvg}"
     alt="AISeal ${tier} Certified — TrustScore ${score}"
-    width="160"
-    height="160"
+    height="28"
     style="border: none;"
   />
 </a>`;
@@ -45,7 +46,7 @@ export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedC
       <div
         className="rounded-lg p-4 font-mono text-xs leading-relaxed overflow-x-auto"
         style={{
-          background: "#0d0d0d",
+          background: "var(--bg-elevated, #0d0d0d)",
           border: "1px solid var(--border-mid)",
           color: "#9ca3af",
         }}

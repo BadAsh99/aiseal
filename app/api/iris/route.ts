@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { rateLimit } from "@/app/lib/rate-limit";
 
+const MAX_FINDINGS = 50;
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const IRIS_SYSTEM_PROMPT = `You are IRIS — Integrated Risk Insight System. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
@@ -18,9 +20,16 @@ Rules:
 - Never say "I" — you are IRIS, write in third person or imperatively`;
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+  const { ok } = rateLimit(ip, { maxRequests: 10, windowMs: 60_000 });
+  if (!ok) {
+    return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
+  }
+
   try {
     const body = await req.json();
-    const { score, findings, model, scenario } = body;
+    const { score, findings: rawFindings, model, scenario } = body;
+    const findings = Array.isArray(rawFindings) ? rawFindings.slice(0, MAX_FINDINGS) : [];
 
     const fails = findings.filter((f: { status: string }) => f.status === "fail");
     const warns = findings.filter((f: { status: string }) => f.status === "warning");

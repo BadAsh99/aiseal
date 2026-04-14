@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { rateLimit } from "@/app/lib/rate-limit";
+
+const MAX_PROMPT_LENGTH = 10_000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,7 +117,6 @@ function firstMatch(pairs: [RegExp, string][], prompt: string): [RegExp, string]
 // ---------------------------------------------------------------------------
 
 function detectLLM01(prompt: string): Finding {
-  const F = "i";
   const hardPatterns: [RegExp, string][] = [
     [/ignore\s+(all\s+)?previous\s+instructions?/i,             "direct override"],
     [/jailbreak/i,                                               "jailbreak attempt"],
@@ -454,7 +456,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const prompt = (body.prompt ?? "").trim();
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+  const { ok } = rateLimit(ip, { maxRequests: 30, windowMs: 60_000 });
+  if (!ok) {
+    return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
+  }
+
+  const prompt = (body.prompt ?? "").trim().slice(0, MAX_PROMPT_LENGTH);
   if (!prompt) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
