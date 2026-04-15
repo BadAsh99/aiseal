@@ -13,6 +13,7 @@ export default function Nav() {
     { href: "/scan", label: "TrustScan" },
     { href: "/registry", label: "Registry" },
     { href: "/monitor", label: "Monitor" },
+    { href: "/registry/apply", label: "Apply" },
   ];
 
   return (
@@ -52,17 +53,17 @@ export default function Nav() {
                 {link.label}
               </Link>
             ))}
-          {pathname !== "/scan" && pathname !== "/monitor" && (
+          {pathname !== "/registry/apply" && (
             <a
-              href="/scan"
+              href="/registry/apply"
               className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
               style={{
-                background: "#0080ff",
-                color: "#ffffff",
+                background: "#00c853",
+                color: "#000000",
                 textDecoration: "none",
               }}
             >
-              Run Scan
+              Get Certified
             </a>
           )}
         </div>
@@ -107,14 +108,14 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
-          {pathname !== "/scan" && (
+          {pathname !== "/registry/apply" && (
             <a
-              href="/scan"
+              href="/registry/apply"
               onClick={() => setMobileOpen(false)}
               className="text-sm font-semibold py-2 px-3 rounded-md mt-1 text-center"
-              style={{ background: "#0080ff", color: "#ffffff", textDecoration: "none" }}
+              style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
-              Run Scan
+              Get Certified
             </a>
           )}
         </div>

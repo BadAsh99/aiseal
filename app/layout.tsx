@@ -12,20 +12,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AISeal — AI You Can Trust",
-  description: "The first AI security trust and certification platform. Scan it. Monitor it. Certify it.",
+  title: "AISeal — The CA Layer for AI Trust",
+  description: "The independent certification authority for AI systems. Scan, certify, and publicly verify AI products against OWASP LLM Top 10, NIST AI RMF, and EU AI Act standards.",
   metadataBase: new URL("https://aiseal.ai"),
   openGraph: {
-    title: "AISeal — AI You Can Trust",
-    description: "Scan, monitor, and certify AI systems. OWASP LLM Top 10 scanner, runtime behavioral monitoring, and third-party certification.",
+    title: "AISeal — The CA Layer for AI Trust",
+    description: "Every AI vendor says their product is safe. They're all right — according to themselves. AISeal is the independent verification layer.",
     url: "https://aiseal.ai",
     siteName: "AISeal",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AISeal — AI You Can Trust",
-    description: "Scan, monitor, and certify AI systems.",
+    title: "AISeal — The CA Layer for AI Trust",
+    description: "Every AI vendor says their product is safe. They're all right — according to themselves. AISeal verifies it independently.",
   },
 };
 

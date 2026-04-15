@@ -66,7 +66,7 @@ export default function RegistryPage() {
 
         <div className="flex flex-wrap gap-3 justify-center">
           <Link
-            href="/scan"
+            href="/registry/apply"
             className="px-5 py-2.5 rounded-md text-sm font-semibold"
             style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
           >
@@ -204,11 +204,11 @@ export default function RegistryPage() {
           </div>
           <div className="flex flex-col gap-3 flex-shrink-0">
             <Link
-              href="/scan"
+              href="/registry/apply"
               className="px-6 py-3 rounded-md text-sm font-semibold text-center whitespace-nowrap"
               style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
-              Start with a Free Scan
+              Apply for Certification
             </Link>
             <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
               Results in minutes. No commitment.
