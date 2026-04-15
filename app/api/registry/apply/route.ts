@@ -148,13 +148,72 @@ export async function POST(req: NextRequest) {
   // Log to console (visible in Railway deployment logs)
   console.log("[REGISTRY APPLICATION]", JSON.stringify(application, null, 2));
 
-  // Optional: POST to a webhook (e.g., Zapier → Google Sheets or Slack)
+  // POST a formatted Slack Block Kit message to the webhook
   const webhookUrl = process.env.REGISTRY_NOTIFY_WEBHOOK;
   if (webhookUrl) {
+    const tierEmoji: Record<string, string> = {
+      "ACF-1": "🔘", "ACF-2": "🔵", "ACF-3": "🟡",
+    };
+    const industryLabel: Record<string, string> = {
+      healthcare: "Healthcare", legal: "Legal", fintech: "Fintech",
+      "hr-tech": "HR Tech", other: "Other",
+    };
+    const frameworkList = application.frameworks.length
+      ? application.frameworks.join(", ")
+      : "OWASP only";
+
+    const slackPayload = {
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "🟢 New AISeal Certification Application",
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            { type: "mrkdwn", text: `*Company*\n${application.company_name}` },
+            { type: "mrkdwn", text: `*Product*\n${application.product_name} ${application.product_version}` },
+            { type: "mrkdwn", text: `*Contact*\n${application.contact_name}` },
+            { type: "mrkdwn", text: `*Email*\n${application.contact_email}` },
+            { type: "mrkdwn", text: `*Industry*\n${industryLabel[application.industry] ?? application.industry}` },
+            { type: "mrkdwn", text: `*Target Tier*\n${tierEmoji[application.target_tier] ?? ""} ${application.target_tier}` },
+          ],
+        },
+        {
+          type: "section",
+          fields: [
+            { type: "mrkdwn", text: `*Frameworks*\n${frameworkList}` },
+            { type: "mrkdwn", text: `*How they found us*\n${application.how_heard || "not specified"}` },
+          ],
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*What their AI does*\n${application.description.slice(0, 300)}${application.description.length > 300 ? "…" : ""}`,
+          },
+        },
+        { type: "divider" },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `Application ID: \`${application.application_id}\` · ${new Date(application.submitted_at).toLocaleString("en-US", { timeZone: "America/Phoenix", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} AZ`,
+            },
+          ],
+        },
+      ],
+    };
+
     fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(application),
+      body: JSON.stringify(slackPayload),
     }).catch((err) => {
       console.error("[REGISTRY WEBHOOK ERROR]", err);
     });
