@@ -11,6 +11,7 @@ export default function Nav() {
 
   const links = [
     { href: "/scan", label: "TrustScan" },
+    { href: "/scan/quantum", label: "QR Scan" },
     { href: "/registry", label: "Registry" },
     { href: "/monitor", label: "Monitor" },
     { href: "/registry/apply", label: "Apply" },

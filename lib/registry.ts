@@ -1,7 +1,22 @@
 export type CertTier = "ACF-1" | "ACF-2" | "ACF-3";
+export type QRTier = "QR-1" | "QR-2";
 export type CertStatus = "ACTIVE" | "UNDER_REVIEW" | "SUSPENDED" | "EXPIRED";
 export type Industry = "healthcare" | "legal" | "fintech" | "hr-tech" | "other";
 export type Framework = "OWASP" | "NIST" | "EU_AI_ACT" | "MITRE";
+
+// QR tier definitions for UI display
+export const QR_TIERS: Record<QRTier, { label: string; description: string; color: string }> = {
+  "QR-1": {
+    label: "QR-1 Inventoried",
+    description: "All cryptographic primitives catalogued. PQC migration plan documented and reviewed.",
+    color: "#f59e0b",
+  },
+  "QR-2": {
+    label: "QR-2 PQC Ready",
+    description: "Fully migrated to post-quantum cryptography. ML-KEM key exchange + ML-DSA/SLH-DSA certificate signing.",
+    color: "#00c853",
+  },
+};
 
 export interface FrameworkCoverage {
   owasp: boolean;
