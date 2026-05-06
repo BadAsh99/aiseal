@@ -21,6 +21,18 @@ interface MitreMapping {
   name: string;
 }
 
+interface EuAiActArticle {
+  ref: string;
+  title: string;
+  requirement: string;
+  test_rationale: string;
+}
+
+interface EuAiActMapping {
+  articles: EuAiActArticle[];
+  conformity_verdict: "conformant" | "partial" | "non-conformant";
+}
+
 interface Finding {
   category: string;
   code: string;
@@ -29,6 +41,7 @@ interface Finding {
   detail: string;
   nist?: NistMapping;
   mitre?: MitreMapping[];
+  eu_aiact?: EuAiActMapping;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +73,86 @@ const MITRE_MAPPINGS: Record<string, MitreMapping[]> = {
   LLM09: [{ id: "AML.T0048", name: "LLM Jailbreak" }],
   LLM10: [{ id: "AML.T0034", name: "Cost Harvesting" }],
 };
+
+// EU AI Act enforcement: August 2, 2026 (Article 15(5) adversarial testing evidence required)
+const EU_AIACT_ENFORCEMENT_DATE = "2026-08-02";
+
+const EU_AIACT_ARTICLES: Record<string, EuAiActArticle[]> = {
+  LLM01: [{
+    ref: "Article 15(3)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "High-risk AI systems shall be resilient against attempts by unauthorised third parties to alter their use, outputs or performance by exploiting the system vulnerabilities, including adversarial inputs designed to make the system evade detection.",
+    test_rationale: "Prompt injection attacks directly target model guardrail evasion — the primary adversarial input vector covered by Article 15(3).",
+  }],
+  LLM02: [{
+    ref: "Article 15(4)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "The technical solutions to address AI specific vulnerabilities shall include, where appropriate, measures to prevent and control for attacks trying to manipulate the training dataset, inputs designed to cause the model to make mistakes, or model outputs that expose confidential information.",
+    test_rationale: "LLM02 detects credentials, PII, and sensitive tokens surfaced in prompts or outputs — direct evidence of cybersecurity incident risk under Art 15(4).",
+  }],
+  LLM03: [{
+    ref: "Article 15(5)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "Providers of high-risk AI systems shall ensure a level of cybersecurity appropriate to the risks. This includes cybersecurity across the full lifecycle — development, deployment, and maintenance — including the software supply chain.",
+    test_rationale: "LLM03 detects untrusted package sources, unsafe model loading, and shell-execution patterns — supply chain attack vectors across the AI lifecycle.",
+  }],
+  LLM04: [{
+    ref: "Article 15(2)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "High-risk AI systems shall be resilient as regards errors, faults or inconsistencies that may occur within the system or the environment in which the system operates, in particular when interacting with natural persons. The technical robustness and accuracy shall account for fault tolerance.",
+    test_rationale: "Data poisoning and RAG manipulation attacks directly degrade model robustness and fault tolerance — the core concern of Article 15(2).",
+  }],
+  LLM05: [{
+    ref: "Article 15(5)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "Providers of high-risk AI systems shall ensure a level of cybersecurity appropriate to the risks. This includes cybersecurity across the full lifecycle — development, deployment, and maintenance — including the software supply chain.",
+    test_rationale: "LLM05 detects obfuscated code execution, XSS injection, and output-borne payloads — improper output handling vulnerabilities under Article 15(5).",
+  }],
+  LLM06: [{
+    ref: "Article 10(3)",
+    title: "Data and Data Governance",
+    requirement: "Training, validation and testing data sets shall be subject to appropriate data governance and management practices. Those practices shall concern in particular the collection, storage and further processing of personal data in view of applicable Union data protection law.",
+    test_rationale: "LLM06 detects prompts requesting destructive or high-privilege autonomous actions — evidence of excessive agency risk requiring data governance controls under Article 10(3).",
+  }],
+  LLM07: [{
+    ref: "Article 15(3)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "High-risk AI systems shall be resilient against attempts by unauthorised third parties to alter their use, outputs or performance by exploiting system vulnerabilities, including adversarial exploitation of plugin interfaces and internal instruction surfaces.",
+    test_rationale: "System prompt extraction attacks exploit the instruction surface to bypass designed constraints — an adversarial exploitation vector directly covered by Article 15(3).",
+  }],
+  LLM08: [{
+    ref: "Article 14",
+    title: "Human Oversight",
+    requirement: "High-risk AI systems shall be designed and developed in such a way, including with appropriate human-machine interface tools, that they can be effectively overseen by natural persons during the period in which the AI system is in use. Human oversight measures shall be proportionate to the risks and shall aim to minimise the risk of over-reliance.",
+    test_rationale: "Vector/embedding manipulation attacks can cause autonomous AI actions that bypass human oversight — directly relevant to Article 14 requirements for human control of agentic AI behaviour.",
+  }],
+  LLM09: [{
+    ref: "Article 13",
+    title: "Transparency and Provision of Information to Deployers",
+    requirement: "High-risk AI systems shall be designed and developed in such a way as to ensure that their operation is sufficiently transparent to enable deployers to interpret the system's output and use it appropriately. An appropriate type and degree of transparency shall include the system's accuracy limitations and foreseeable misuse risks.",
+    test_rationale: "LLM09 detects fabricated citations, misinformation generation, and authority impersonation — failure modes that create overreliance risk and violate the accuracy transparency requirements of Article 13.",
+  }],
+  LLM10: [{
+    ref: "Article 15(4)",
+    title: "Accuracy, Robustness and Cybersecurity",
+    requirement: "Technical solutions shall include measures to prevent attacks trying to manipulate the training dataset, inputs designed to cause the model to make mistakes, or model outputs that expose confidential information, including model weights and architecture details.",
+    test_rationale: "Unbounded consumption and resource exhaustion attacks degrade model availability and may expose model internals — both classified as cybersecurity risks under Article 15(4).",
+  }],
+};
+
+function euAiActMapping(code: string, status: Status, severity: Severity): EuAiActMapping | undefined {
+  const articles = EU_AIACT_ARTICLES[code];
+  if (!articles) return undefined;
+  let conformity: EuAiActMapping["conformity_verdict"];
+  if (status === "pass") {
+    conformity = "conformant";
+  } else if (status === "warning" || severity === "low") {
+    conformity = "partial";
+  } else {
+    conformity = "non-conformant";
+  }
+  return { articles, conformity_verdict: conformity };
+}
 
 // ---------------------------------------------------------------------------
 // Risk-weighted scoring
@@ -93,6 +186,7 @@ const SEVERITY_MULTIPLIERS: Record<Severity, number> = {
 function withMappings(f: Finding): Finding {
   f.nist = NIST_MAPPINGS[f.code];
   f.mitre = MITRE_MAPPINGS[f.code];
+  f.eu_aiact = euAiActMapping(f.code, f.status, f.severity);
   return f;
 }
 
@@ -474,10 +568,22 @@ export async function POST(req: NextRequest) {
   const { score, findings } = runScan(prompt);
   const latency_ms = Date.now() - t0;
 
+  const non_conformant = findings.filter(f => f.eu_aiact?.conformity_verdict === "non-conformant").length;
+  const partial = findings.filter(f => f.eu_aiact?.conformity_verdict === "partial").length;
+  const overall_conformity = non_conformant > 0 ? "non-conformant" : partial > 0 ? "partial" : "conformant";
+
   return NextResponse.json({
     scan_id: randomUUID(),
     score,
     findings,
+    eu_aiact: {
+      enforcement_date: EU_AIACT_ENFORCEMENT_DATE,
+      overall_conformity,
+      non_conformant_count: non_conformant,
+      partial_count: partial,
+      framework: "EU AI Act (Regulation 2024/1689)",
+      covered_articles: ["Article 13", "Article 14", "Article 15(2)", "Article 15(3)", "Article 15(4)", "Article 15(5)", "Article 10(3)"],
+    },
     model: body.model ?? "claude-sonnet-4-6",
     scenario: body.scenario ?? null,
     mode,
