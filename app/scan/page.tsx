@@ -180,6 +180,59 @@ const NIST_RMF_MAP: Record<string, { functions: string[]; property: string }> = 
   LLM10: { functions: ["GOVERN", "MANAGE"],  property: "Safe" },
 };
 
+const PLAIN_ENGLISH: Record<string, { title: string; business: string; action: string }> = {
+  LLM01: {
+    title: "AI Hijacking Attempt",
+    business: "Someone tried to override your AI's instructions and make it behave in unauthorized ways — like a burglar swapping your security guard with their own guy.",
+    action: "Add input validation and restrict what your AI will accept from users.",
+  },
+  LLM02: {
+    title: "Sensitive Data Exposure",
+    business: "A password, API key, or personal data was found in this prompt — it may now be stored in your AI's logs or training history.",
+    action: "Rotate any exposed credentials immediately. Never send secrets to an AI.",
+  },
+  LLM03: {
+    title: "Untrusted AI Components",
+    business: "Your AI pipeline may rely on third-party plugins or models that haven't been verified — like installing random apps from an unknown source on your phone.",
+    action: "Audit every external model, plugin, or tool your AI depends on.",
+  },
+  LLM04: {
+    title: "Poisoned Instructions",
+    business: "Hidden instructions were found that could corrupt how your AI responds — like someone sneaking bad advice into your employee handbook.",
+    action: "Validate all content that feeds into your AI's knowledge base.",
+  },
+  LLM05: {
+    title: "Dangerous Code Output",
+    business: "Your AI was coaxed into generating or helping execute harmful code — like tricking a contractor into unknowingly installing malware.",
+    action: "Add output filtering and never let AI-generated code run without review.",
+  },
+  LLM06: {
+    title: "Unauthorized Actions",
+    business: "Your AI was asked to perform high-risk actions like deleting files, running commands, or making system changes it shouldn't have access to.",
+    action: "Apply least-privilege rules — your AI should only do what it absolutely needs to.",
+  },
+  LLM07: {
+    title: "System Instructions Leaked",
+    business: "Someone tried to trick your AI into revealing its secret instructions or internal configuration — like asking a magician to show you their tricks.",
+    action: "Never rely on hidden prompts for security. Treat system prompts as non-secret.",
+  },
+  LLM08: {
+    title: "Knowledge Base Tampering",
+    business: "Weaknesses were found in how your AI stores and retrieves information — leaving room for fake data to influence its answers.",
+    action: "Validate all data going into your AI's retrieval system.",
+  },
+  LLM09: {
+    title: "Hallucination Risk",
+    business: "Your AI showed signs of confidently generating false information — a liability risk if users trust its answers for decisions.",
+    action: "Add fact-checking layers and clearly label AI output as unverified.",
+  },
+  LLM10: {
+    title: "Resource Abuse",
+    business: "Your AI can be tricked into running expensive or infinite operations — which could crash your system or spike your API bill unexpectedly.",
+    action: "Set strict token limits, rate limits, and timeouts on all AI endpoints.",
+  },
+};
+
 type RiskTier = "critical" | "high" | "medium" | "low";
 
 function riskTier(score: number, findings?: Finding[]): RiskTier {
@@ -1377,6 +1430,48 @@ export default function ScanPage() {
               </div>
             </div>
 
+            {/* Plain English Business Summary */}
+            {(failCount > 0 || warnCount > 0) && (() => {
+              const tier = riskTier(result.score, result.findings);
+              const tierColor = TIER_COLORS[tier];
+              const issues = result.findings.filter((f) => f.status === "fail" || f.status === "warning");
+              const summaryLines: { title: string; business: string } [] = issues
+                .map((f) => PLAIN_ENGLISH[f.code])
+                .filter(Boolean)
+                .map((pe) => ({ title: pe.title, business: pe.business }));
+              return (
+                <div
+                  className="rounded-xl p-5 mb-6"
+                  style={{ background: `${tierColor}08`, border: `1px solid ${tierColor}30` }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-base">⚠️</span>
+                    <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                      What this means for your business
+                    </p>
+                  </div>
+                  <ul className="space-y-2">
+                    {summaryLines.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-xs mt-0.5 flex-shrink-0" style={{ color: tierColor }}>▸</span>
+                        <div>
+                          <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                            {item.title}:{" "}
+                          </span>
+                          <span className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                            {item.business}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs mt-3 pt-3" style={{ color: "var(--text-faint)", borderTop: `1px solid ${tierColor}20` }}>
+                    Scroll down for technical details and recommended actions for your security team.
+                  </p>
+                </div>
+              );
+            })()}
+
             {/* Findings Table */}
             <div
               className="rounded-xl overflow-hidden"
@@ -1426,11 +1521,21 @@ export default function ScanPage() {
                           className="text-sm font-semibold"
                           style={{ color: "var(--text-primary)" }}
                         >
-                          {finding.category}
+                          {PLAIN_ENGLISH[finding.code]?.title ?? finding.category}
                         </span>
                         {severityBadge(finding.severity)}
                       </div>
-                      <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      {(finding.status === "fail" || finding.status === "warning") && PLAIN_ENGLISH[finding.code] && (
+                        <p className="text-xs leading-relaxed mb-1.5" style={{ color: "var(--text-primary)", opacity: 0.75 }}>
+                          {PLAIN_ENGLISH[finding.code].business}
+                        </p>
+                      )}
+                      {(finding.status === "fail" || finding.status === "warning") && PLAIN_ENGLISH[finding.code] && (
+                        <p className="text-xs font-medium" style={{ color: "#0080ff" }}>
+                          → {PLAIN_ENGLISH[finding.code].action}
+                        </p>
+                      )}
+                      <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--text-faint)" }}>
                         {finding.detail}
                       </p>
                     </div>
