@@ -574,6 +574,13 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     scan_id: randomUUID(),
+    // Marks this result as a static/preview scan (regex over the submitted prompt).
+    // /api/scan/live (F3) grades the vendor's actual model behavior and is the
+    // only scan mode that's eligible for AISeal certification.
+    scan_mode: "preview",
+    scan_mode_note:
+      "Static preview scan. Reflects pattern-matching against the submitted prompt, " +
+      "not observed model behavior. Run /api/scan/live for certification-eligible scoring.",
     score,
     findings,
     eu_aiact: {
