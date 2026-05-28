@@ -3,7 +3,11 @@ import Link from "next/link";
 import { getCertified, getRegistryStats } from "../../lib/registry";
 import RegistryClient from "./RegistryClient";
 
-export const revalidate = 60;
+// Render on each request — registry is sourced from Supabase. Build-time
+// prerender would require Supabase env at build time and freeze the list until
+// the next deploy. revalidate=60 left a 60s freshness ceiling that was also a
+// false advertisement for "Live Registry — Updated in real time."
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "AI Trust Registry — AISeal",
