@@ -20,9 +20,9 @@ function formatTimestamp(iso: string): string {
   });
 }
 
-export default function RegistryPage() {
-  const certs = getCertified();
-  const stats = getRegistryStats();
+export default async function RegistryPage() {
+  const certs = await getCertified();
+  const stats = await getRegistryStats();
 
   return (
     <div style={{ background: "var(--bg-base)", minHeight: "100vh" }}>

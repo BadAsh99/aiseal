@@ -1,3 +1,9 @@
+// AISeal F1+F2 — registry data layer.
+// Reads from Supabase `certifications` (RLS-on, anon SELECT allowed by design).
+// Replaces the prior hardcoded MOCK_CERTS array. Functions are now async.
+
+import { supabasePublic } from "./supabase/public";
+
 export type CertTier = "ACF-1" | "ACF-2" | "ACF-3";
 export type QRTier = "QR-1" | "QR-2";
 export type CertStatus = "ACTIVE" | "UNDER_REVIEW" | "SUSPENDED" | "EXPIRED";
@@ -29,6 +35,8 @@ export interface CertRecord {
   cert_id: string;
   vendor_id: string;
   vendor_name: string;
+  /** Domain bound to this cert; used by /api/verify to validate Origin/Referer. null for Pilot vendors. */
+  vendor_domain: string | null;
   product_name: string;
   product_version: string;
   industry: Industry;
@@ -58,110 +66,96 @@ export interface RegistryStats {
   last_updated: string;
 }
 
-const MOCK_CERTS: CertRecord[] = [
-  {
-    cert_id: "ACF3-2026-0001",
-    vendor_id: "meridian-health",
-    vendor_name: "Meridian Health Systems",
-    product_name: "ClinicalAssist",
-    product_version: "v4.2",
-    industry: "healthcare",
-    tier: "ACF-3",
-    status: "ACTIVE",
-    trust_score: 94,
-    issued_date: "2026-01-10",
-    expiry_date: "2027-01-10",
-    frameworks: { owasp: true, nist: true, euAiAct: true, mitreAtlas: true },
-    scope_description: "RAG-based clinical decision support AI handling PHI. Full OWASP LLM Top 10 assessment covering LLM01–LLM07. NIST AI RMF GOVERN/MAP/MEASURE/MANAGE functions verified. EU AI Act Article 9 risk management documentation reviewed and approved.",
-    logo_initial: "M",
-    logo_color: "#a855f7",
-  },
-  {
-    cert_id: "ACF2-2026-0002",
-    vendor_id: "vantage-legal",
-    vendor_name: "Vantage Legal AI",
-    product_name: "DocReview Pro",
-    product_version: "v2.1",
-    industry: "legal",
-    tier: "ACF-2",
-    status: "ACTIVE",
-    trust_score: 88,
-    issued_date: "2026-02-14",
-    expiry_date: "2027-02-14",
-    frameworks: { owasp: true, nist: true, euAiAct: false, mitreAtlas: true },
-    scope_description: "Contract analysis and due diligence AI. No PII/PHI handling beyond attorney-client privileged content. All mandatory OWASP controls pass (LLM01, LLM06, LLM07). Sensitive data controls (LLM02) verified. Output handling (LLM05) verified for generated legal summaries.",
-    logo_initial: "V",
-    logo_color: "#0080ff",
-  },
-  {
-    cert_id: "ACF2-2026-0003",
-    vendor_id: "fincore-systems",
-    vendor_name: "FinCore Systems",
-    product_name: "RiskAdvisor",
-    product_version: "v3.0",
-    industry: "fintech",
-    tier: "ACF-2",
-    status: "ACTIVE",
-    trust_score: 85,
-    issued_date: "2026-03-01",
-    expiry_date: "2027-03-01",
-    frameworks: { owasp: true, nist: true, euAiAct: true, mitreAtlas: false },
-    scope_description: "AI-assisted credit risk scoring and loan decisioning. Handles financial PII. LLM02 (Sensitive Data Disclosure) mandatory for this architecture. NIST AI RMF bias and fairness documentation verified. EU AI Act high-risk AI system classification reviewed.",
-    logo_initial: "F",
-    logo_color: "#0080ff",
-  },
-  {
-    cert_id: "ACF1-2026-0004",
-    vendor_id: "talentiq",
-    vendor_name: "TalentIQ",
-    product_name: "HireAssist",
-    product_version: "v1.4",
-    industry: "hr-tech",
-    tier: "ACF-1",
-    status: "ACTIVE",
-    trust_score: 78,
-    issued_date: "2026-03-20",
-    expiry_date: "2027-03-20",
-    frameworks: { owasp: true, nist: false, euAiAct: false, mitreAtlas: false },
-    scope_description: "Candidate screening and resume analysis AI. All three mandatory OWASP controls pass (LLM01, LLM06, LLM07). No RAG architecture — LLM04 not applicable. Does not generate executable output — LLM05 not applicable.",
-    logo_initial: "T",
-    logo_color: "#00c853",
-  },
-  {
-    cert_id: "ACF1-2026-0005",
-    vendor_id: "nexus-support",
-    vendor_name: "Nexus AI",
-    product_name: "SupportGPT",
-    product_version: "v2.8",
-    industry: "other",
-    tier: "ACF-1",
-    status: "UNDER_REVIEW",
-    trust_score: 76,
-    issued_date: "2026-04-01",
-    expiry_date: "2027-04-01",
-    frameworks: { owasp: true, nist: false, euAiAct: false, mitreAtlas: false },
-    scope_description: "Customer support automation AI. All mandatory OWASP controls pass. Currently under scheduled 6-month review audit. Certificate remains valid during review period.",
-    logo_initial: "N",
-    logo_color: "#f59e0b",
-  },
-];
+// ─── DB row → CertRecord mapping ─────────────────────────────────────────────
 
-export function getCertified(): CertRecord[] {
-  return MOCK_CERTS;
+interface CertificationsRow {
+  cert_id: string;
+  vendor_id: string;
+  vendor_name: string;
+  vendor_domain: string | null;
+  product_name: string;
+  product_version: string;
+  industry: Industry;
+  tier: CertTier;
+  status: CertStatus;
+  trust_score: number;
+  issued_date: string;
+  expiry_date: string;
+  frameworks: FrameworkCoverage;
+  scope_description: string;
+  logo_initial: string;
+  logo_color: string;
 }
 
-export function getCertByVendorId(vendor_id: string): CertRecord | null {
-  return MOCK_CERTS.find((c) => c.vendor_id === vendor_id) ?? null;
+function rowToCert(r: CertificationsRow): CertRecord {
+  return {
+    cert_id: r.cert_id,
+    vendor_id: r.vendor_id,
+    vendor_name: r.vendor_name,
+    vendor_domain: r.vendor_domain,
+    product_name: r.product_name,
+    product_version: r.product_version,
+    industry: r.industry,
+    tier: r.tier,
+    status: r.status,
+    trust_score: r.trust_score,
+    issued_date: r.issued_date,
+    expiry_date: r.expiry_date,
+    frameworks: r.frameworks,
+    scope_description: r.scope_description,
+    logo_initial: r.logo_initial,
+    logo_color: r.logo_color,
+  };
 }
 
-export function searchRegistry(params: {
+// ─── Query functions (all async now) ─────────────────────────────────────────
+
+export async function getCertified(): Promise<CertRecord[]> {
+  const db = supabasePublic();
+  const { data, error } = await db
+    .from("certifications")
+    .select("*")
+    .order("issued_date", { ascending: false });
+  if (error) {
+    // Fail loud — silent empty array masks misconfiguration (today's $0 lesson).
+    throw new Error(`registry.getCertified failed: ${error.message}`);
+  }
+  return (data ?? []).map(rowToCert);
+}
+
+export async function getCertByVendorId(vendor_id: string): Promise<CertRecord | null> {
+  const db = supabasePublic();
+  const { data, error } = await db
+    .from("certifications")
+    .select("*")
+    .eq("vendor_id", vendor_id)
+    .maybeSingle();
+  if (error) throw new Error(`registry.getCertByVendorId(${vendor_id}) failed: ${error.message}`);
+  return data ? rowToCert(data) : null;
+}
+
+export async function getCertByCertId(cert_id: string): Promise<CertRecord | null> {
+  const db = supabasePublic();
+  const { data, error } = await db
+    .from("certifications")
+    .select("*")
+    .eq("cert_id", cert_id)
+    .maybeSingle();
+  if (error) throw new Error(`registry.getCertByCertId(${cert_id}) failed: ${error.message}`);
+  return data ? rowToCert(data) : null;
+}
+
+export async function searchRegistry(params: {
   query?: string;
   tier?: CertTier | "";
   industry?: Industry | "";
   framework?: Framework | "";
-}): CertRecord[] {
+}): Promise<CertRecord[]> {
+  // Filtering happens client-side for simplicity (registry is small during Pilot).
+  // Swap to server-side filters once volume grows.
+  const all = await getCertified();
   const { query, tier, industry, framework } = params;
-  return MOCK_CERTS.filter((cert) => {
+  return all.filter((cert) => {
     if (query) {
       const q = query.toLowerCase();
       const match =
@@ -186,8 +180,8 @@ export function searchRegistry(params: {
   });
 }
 
-export function getRegistryStats(): RegistryStats {
-  const certs = getCertified();
+export async function getRegistryStats(): Promise<RegistryStats> {
+  const certs = await getCertified();
   return {
     total_vendors: new Set(certs.map((c) => c.vendor_id)).size,
     total_certifications: certs.length,
