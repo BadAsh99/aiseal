@@ -305,25 +305,26 @@ export default async function VendorCertPage({
               </div>
             </div>
 
-            {/* Download cert PDF */}
+            {/* Download cert PDF — server-rendered with embedded HMAC sig + verify QR */}
             <div className="flex flex-wrap gap-3">
-              <span
+              <a
+                href={`/api/certs/${cert.cert_id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold"
                 style={{
                   background: "var(--bg-surface)",
-                  color: "var(--text-muted)",
+                  color: "var(--text-primary)",
                   border: "1px solid var(--border-mid)",
-                  opacity: 0.6,
-                  cursor: "default",
+                  textDecoration: "none",
                 }}
-                title="PDF export coming soon"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <path d="M12 16L12 4M12 16L8 12M12 16L16 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M4 20H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
-                Certificate PDF — Coming Soon
-              </span>
+                Download Certificate PDF
+              </a>
               <Link
                 href="/registry"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold"
