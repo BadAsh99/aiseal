@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCertByVendorId, getCertified } from "../../../lib/registry";
+import { getCertByVendorId } from "../../../lib/registry";
 import type { CertTier, CertStatus } from "../../../lib/registry";
 import CertBadge from "../../components/registry/CertBadge";
 import TrustScoreGauge from "../../components/registry/TrustScoreGauge";
 import EmbedCodeBlock from "./EmbedCodeBlock";
 import LiveStatusBadge from "./LiveStatusBadge";
 
-export const revalidate = 60;
-
-export async function generateStaticParams() {
-  const certs = getCertified();
-  return certs.map((c) => ({ vendor_id: c.vendor_id }));
-}
+// Dynamic — registry data is in Supabase; pages render on-demand for the Pilot.
+// Re-introduce generateStaticParams once volume justifies + build env always has Supabase creds.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -21,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ vendor_id: string }>;
 }): Promise<Metadata> {
   const { vendor_id } = await params;
-  const cert = getCertByVendorId(vendor_id);
+  const cert = await getCertByVendorId(vendor_id);
   if (!cert) return { title: "Certificate Not Found — AISeal" };
   return {
     title: `${cert.vendor_name} — AISeal ${cert.tier} Certificate`,
@@ -107,7 +104,7 @@ export default async function VendorCertPage({
   params: Promise<{ vendor_id: string }>;
 }) {
   const { vendor_id } = await params;
-  const cert = getCertByVendorId(vendor_id);
+  const cert = await getCertByVendorId(vendor_id);
   if (!cert) notFound();
 
   const tm = TIER_META[cert.tier];

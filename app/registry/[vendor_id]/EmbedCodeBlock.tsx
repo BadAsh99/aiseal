@@ -1,5 +1,10 @@
 "use client";
 
+// AISeal F1+F2 — embed snippet pointing at the SELF-HOSTED HMAC-signed badge.
+// Was previously shields.io PNG (forgeable, free-ride). Now points at
+// /api/badges/{cert_id}.svg, which embeds an HMAC signature verifiable via
+// /api/verify/{cert_id}. The displayed code and the copied code are identical.
+
 import { useState } from "react";
 import type { CertTier } from "../../../lib/registry";
 
@@ -13,13 +18,16 @@ interface EmbedCodeBlockProps {
 export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedCodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
-  const tierColor = tier === "ACF-3" ? "%23d4a017" : tier === "ACF-2" ? "%230080ff" : "%2300c853";
-  const shieldSvg = `https://img.shields.io/badge/AISeal-${tier}%20%7C%20${score}%2F100-${tierColor.replace("%23","")}?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMyA3djZjMCA1LjU1IDMuODQgMTAuNzQgOSAxMiA1LjE2LTEuMjYgOS02LjQ1IDktMTJWN2wtOS01eiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=`;
-  const embedHtml = `<a href="https://aiseal.ai/registry/${vendorId}" target="_blank" rel="noopener noreferrer" title="AISeal ${tier} Certificate — TrustScore ${score}/100">
+  const badgeUrl = `https://aiseal.ai/api/badges/${certId}.svg`;
+  const registryUrl = `https://aiseal.ai/registry/${vendorId}`;
+  const altText = `AISeal ${tier} Certified — TrustScore ${score}/100`;
+
+  const embedHtml = `<a href="${registryUrl}" target="_blank" rel="noopener noreferrer" title="${altText}">
   <img
-    src="${shieldSvg}"
-    alt="AISeal ${tier} Certified — TrustScore ${score}"
-    height="28"
+    src="${badgeUrl}"
+    alt="${altText}"
+    width="240"
+    height="60"
     style="border: none;"
   />
 </a>`;
@@ -56,7 +64,7 @@ export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedC
           {` `}
           <span style={{ color: "#86efac" }}>href</span>
           <span style={{ color: "#9ca3af" }}>=</span>
-          <span style={{ color: "#fca5a5" }}>&quot;https://aiseal.ai/registry/{vendorId}&quot;</span>
+          <span style={{ color: "#fca5a5" }}>&quot;{registryUrl}&quot;</span>
           {` `}
           <span style={{ color: "#86efac" }}>target</span>
           <span style={{ color: "#9ca3af" }}>=</span>
@@ -64,26 +72,26 @@ export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedC
           {`\n  `}
           <span style={{ color: "#86efac" }}>title</span>
           <span style={{ color: "#9ca3af" }}>=</span>
-          <span style={{ color: "#fca5a5" }}>&quot;AISeal {tier} — TrustScore {score}/100&quot;</span>
+          <span style={{ color: "#fca5a5" }}>&quot;{altText}&quot;</span>
           <span style={{ color: "#7dd3fc" }}>&gt;</span>
           {`\n  `}
           <span style={{ color: "#7dd3fc" }}>&lt;img</span>
           {`\n    `}
           <span style={{ color: "#86efac" }}>src</span>
           <span style={{ color: "#9ca3af" }}>=</span>
-          <span style={{ color: "#fca5a5" }}>&quot;https://aiseal.ai/badges/{certId}.svg&quot;</span>
+          <span style={{ color: "#fca5a5" }}>&quot;{badgeUrl}&quot;</span>
           {`\n    `}
           <span style={{ color: "#86efac" }}>alt</span>
           <span style={{ color: "#9ca3af" }}>=</span>
-          <span style={{ color: "#fca5a5" }}>&quot;AISeal {tier} Certified&quot;</span>
+          <span style={{ color: "#fca5a5" }}>&quot;{altText}&quot;</span>
           {`\n    `}
           <span style={{ color: "#86efac" }}>width</span>
           <span style={{ color: "#9ca3af" }}>=</span>
-          <span style={{ color: "#fca5a5" }}>&quot;160&quot;</span>
+          <span style={{ color: "#fca5a5" }}>&quot;240&quot;</span>
           {` `}
           <span style={{ color: "#86efac" }}>height</span>
           <span style={{ color: "#9ca3af" }}>=</span>
-          <span style={{ color: "#fca5a5" }}>&quot;160&quot;</span>
+          <span style={{ color: "#fca5a5" }}>&quot;60&quot;</span>
           {` `}
           <span style={{ color: "#7dd3fc" }}>/&gt;</span>
           {`\n`}
@@ -117,6 +125,15 @@ export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedC
           </>
         )}
       </button>
+
+      <p className="text-xs mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        The badge is HMAC-signed and self-hosted on aiseal.ai. Validators can cross-check it
+        against{" "}
+        <span className="font-mono" style={{ color: "var(--text-secondary)" }}>
+          /api/verify/{certId}
+        </span>{" "}
+        — if the badge was tampered with, signatures won&apos;t match.
+      </p>
     </div>
   );
 }

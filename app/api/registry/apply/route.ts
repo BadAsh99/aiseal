@@ -1,41 +1,33 @@
+// AISeal F1+F2 — certification application intake.
+//
+// POST /api/registry/apply  → inserts into public.applications (RLS-on, NO anon
+//   policy — service-role only). Replaces the prior in-memory Map that wiped on
+//   every Railway deploy.
+// GET  /api/registry/apply  → admin listing (x-admin-secret header required).
+//
+// PII (email, ip_hash, user_agent) is isolated in this table by design — the
+// public certifications table NEVER joins to it. That's the physical-separation
+// pattern from the 2026-05-27 RLS lesson.
+
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import { createHash } from "node:crypto";
 import { rateLimit } from "@/app/lib/rate-limit";
+import { supabaseAdmin } from "../../../../lib/supabase/server";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface RegistryApplication {
-  application_id: string;
-  submitted_at: string;
+interface ApplicationRow {
+  id: string;
+  created_at: string;
+  email: string;
   company_name: string;
-  contact_name: string;
-  contact_email: string;
+  vendor_domain: string | null;
   product_name: string;
-  product_version: string;
-  website: string;
-  industry: string;
-  description: string;
-  target_tier: string;
-  frameworks: string[];
-  how_heard: string;
-}
-
-// ---------------------------------------------------------------------------
-// In-memory store (visible in Railway logs, ephemeral across deploys)
-// ---------------------------------------------------------------------------
-
-const applications = new Map<string, RegistryApplication>();
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function generateAppId(): string {
-  const year = new Date().getFullYear();
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `APP-${year}-${suffix}`;
+  product_version: string | null;
+  tier_requested: "ACF-1" | "ACF-2" | "ACF-3";
+  industry: "healthcare" | "legal" | "fintech" | "hr-tech" | "other";
+  description: string | null;
+  how_heard: string | null;
+  notes: Record<string, unknown>;
+  status: "pending" | "approved" | "rejected" | "withdrawn";
 }
 
 function isValidEmail(email: string): boolean {
@@ -51,23 +43,40 @@ function isValidUrl(url: string): boolean {
   }
 }
 
+function extractDomain(url: string): string | null {
+  try {
+    return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function ipFromHeaders(req: NextRequest): string {
+  // Last x-forwarded-for / x-real-ip — never trust the first XFF entry
+  // (clients can spoof it to bypass rate limits).
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+  return req.headers.get("x-real-ip")?.trim() ?? "unknown";
+}
+
+function hashIp(ip: string): string {
+  return createHash("sha256").update(ip).digest("hex").slice(0, 32);
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/registry/apply
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
-  // Rate limit: 5 applications per IP per hour
-  // Use x-real-ip (set by Railway/proxy) or the LAST entry in x-forwarded-for.
-  // Never trust the FIRST x-forwarded-for entry — clients can spoof it to bypass rate limits.
-  const ip =
-    req.headers.get("x-real-ip")?.trim() ??
-    req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
-    "unknown";
+  const ip = ipFromHeaders(req);
   const { ok } = rateLimit(ip, { maxRequests: 5, windowMs: 60 * 60 * 1000 });
   if (!ok) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -78,8 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  // Validate required fields
-  const required: (keyof typeof body)[] = [
+  const required = [
     "company_name",
     "contact_name",
     "contact_email",
@@ -87,7 +95,7 @@ export async function POST(req: NextRequest) {
     "industry",
     "description",
     "target_tier",
-  ];
+  ] as const;
 
   for (const field of required) {
     if (!body[field] || String(body[field]).trim() === "") {
@@ -95,60 +103,80 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Validate email
   const email = String(body.contact_email).trim();
   if (!isValidEmail(email)) {
     return NextResponse.json({ error: "Invalid contact email address." }, { status: 400 });
   }
 
-  // Validate website if provided
   const website = String(body.website ?? "").trim();
   if (website && !isValidUrl(website)) {
     return NextResponse.json({ error: "Invalid website URL." }, { status: 400 });
   }
 
-  // Validate tier
-  const validTiers = ["ACF-1", "ACF-2", "ACF-3"];
-  if (!validTiers.includes(String(body.target_tier))) {
+  const validTiers = ["ACF-1", "ACF-2", "ACF-3"] as const;
+  const tier_requested = String(body.target_tier) as (typeof validTiers)[number];
+  if (!validTiers.includes(tier_requested)) {
     return NextResponse.json({ error: "Invalid target tier." }, { status: 400 });
   }
 
-  // Validate industry
-  const validIndustries = ["healthcare", "legal", "fintech", "hr-tech", "other"];
-  if (!validIndustries.includes(String(body.industry))) {
+  const validIndustries = ["healthcare", "legal", "fintech", "hr-tech", "other"] as const;
+  const industry = String(body.industry) as (typeof validIndustries)[number];
+  if (!validIndustries.includes(industry)) {
     return NextResponse.json({ error: "Invalid industry." }, { status: 400 });
   }
 
-  // Sanitize and truncate description
+  const company_name = String(body.company_name).trim().slice(0, 200);
+  const product_name = String(body.product_name).trim().slice(0, 200);
+  const product_version = String(body.product_version ?? "").trim().slice(0, 50) || null;
   const description = String(body.description).trim().slice(0, 2000);
+  const how_heard = String(body.how_heard ?? "").trim().slice(0, 500) || null;
+  const contact_name = String(body.contact_name).trim().slice(0, 200);
+  const vendor_domain = website ? extractDomain(website) : null;
 
-  const application: RegistryApplication = {
-    application_id: generateAppId(),
-    submitted_at: new Date().toISOString(),
-    company_name: String(body.company_name).trim().slice(0, 200),
-    contact_name: String(body.contact_name).trim().slice(0, 200),
-    contact_email: email.slice(0, 200),
-    product_name: String(body.product_name).trim().slice(0, 200),
-    product_version: String(body.product_version ?? "").trim().slice(0, 50),
-    website: website.slice(0, 500),
-    industry: String(body.industry),
-    description,
-    target_tier: String(body.target_tier),
-    frameworks: Array.isArray(body.frameworks)
-      ? body.frameworks.map(String).filter((f) =>
-          ["OWASP", "NIST", "EU_AI_ACT", "MITRE"].includes(f)
-        )
-      : [],
-    how_heard: String(body.how_heard ?? "").trim().slice(0, 500),
-  };
+  const frameworks = Array.isArray(body.frameworks)
+    ? body.frameworks
+        .map(String)
+        .filter((f) => ["OWASP", "NIST", "EU_AI_ACT", "MITRE"].includes(f))
+    : [];
 
-  // Store in memory
-  applications.set(application.application_id, application);
+  const ip_hash = hashIp(ip);
+  const user_agent = req.headers.get("user-agent")?.slice(0, 300) ?? null;
 
-  // Log to console (visible in Railway deployment logs)
-  console.log("[REGISTRY APPLICATION]", JSON.stringify(application, null, 2));
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from("applications")
+    .insert({
+      email: email.slice(0, 200),
+      company_name,
+      vendor_domain,
+      product_name,
+      product_version,
+      tier_requested,
+      industry,
+      description,
+      how_heard,
+      notes: {
+        contact_name,
+        website: website.slice(0, 500) || null,
+        frameworks,
+      },
+      ip_hash,
+      user_agent,
+    })
+    .select("id, created_at")
+    .single();
 
-  // POST a formatted Slack Block Kit message to the webhook
+  if (error || !data) {
+    console.error("[REGISTRY APPLICATION] insert failed", error);
+    return NextResponse.json(
+      { error: "Could not save your application. Please try again or email cert@aiseal.ai." },
+      { status: 500 },
+    );
+  }
+
+  console.log("[REGISTRY APPLICATION]", data.id, company_name, tier_requested);
+
+  // Fire Slack notification (non-blocking)
   const webhookUrl = process.env.REGISTRY_NOTIFY_WEBHOOK;
   if (webhookUrl) {
     const tierEmoji: Record<string, string> = {
@@ -158,43 +186,37 @@ export async function POST(req: NextRequest) {
       healthcare: "Healthcare", legal: "Legal", fintech: "Fintech",
       "hr-tech": "HR Tech", other: "Other",
     };
-    const frameworkList = application.frameworks.length
-      ? application.frameworks.join(", ")
-      : "OWASP only";
+    const frameworkList = frameworks.length ? frameworks.join(", ") : "OWASP only";
 
     const slackPayload = {
       blocks: [
         {
           type: "header",
-          text: {
-            type: "plain_text",
-            text: "🟢 New AISeal Certification Application",
-            emoji: true,
-          },
+          text: { type: "plain_text", text: "🟢 New AISeal Certification Application", emoji: true },
         },
         {
           type: "section",
           fields: [
-            { type: "mrkdwn", text: `*Company*\n${application.company_name}` },
-            { type: "mrkdwn", text: `*Product*\n${application.product_name} ${application.product_version}` },
-            { type: "mrkdwn", text: `*Contact*\n${application.contact_name}` },
-            { type: "mrkdwn", text: `*Email*\n${application.contact_email}` },
-            { type: "mrkdwn", text: `*Industry*\n${industryLabel[application.industry] ?? application.industry}` },
-            { type: "mrkdwn", text: `*Target Tier*\n${tierEmoji[application.target_tier] ?? ""} ${application.target_tier}` },
+            { type: "mrkdwn", text: `*Company*\n${company_name}` },
+            { type: "mrkdwn", text: `*Product*\n${product_name}${product_version ? " " + product_version : ""}` },
+            { type: "mrkdwn", text: `*Contact*\n${contact_name}` },
+            { type: "mrkdwn", text: `*Email*\n${email}` },
+            { type: "mrkdwn", text: `*Industry*\n${industryLabel[industry] ?? industry}` },
+            { type: "mrkdwn", text: `*Target Tier*\n${tierEmoji[tier_requested] ?? ""} ${tier_requested}` },
           ],
         },
         {
           type: "section",
           fields: [
             { type: "mrkdwn", text: `*Frameworks*\n${frameworkList}` },
-            { type: "mrkdwn", text: `*How they found us*\n${application.how_heard || "not specified"}` },
+            { type: "mrkdwn", text: `*How they found us*\n${how_heard || "not specified"}` },
           ],
         },
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*What their AI does*\n${application.description.slice(0, 300)}${application.description.length > 300 ? "…" : ""}`,
+            text: `*What their AI does*\n${description.slice(0, 300)}${description.length > 300 ? "…" : ""}`,
           },
         },
         { type: "divider" },
@@ -203,7 +225,7 @@ export async function POST(req: NextRequest) {
           elements: [
             {
               type: "mrkdwn",
-              text: `Application ID: \`${application.application_id}\` · ${new Date(application.submitted_at).toLocaleString("en-US", { timeZone: "America/Phoenix", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} AZ`,
+              text: `Application ID: \`${data.id}\` · ${new Date(data.created_at).toLocaleString("en-US", { timeZone: "America/Phoenix", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} AZ`,
             },
           ],
         },
@@ -222,16 +244,16 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(
     {
       success: true,
-      application_id: application.application_id,
+      application_id: data.id,
       message:
         "Your certification application has been received. We'll review it and reach out within 5 business days.",
     },
-    { status: 201 }
+    { status: 201 },
   );
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/registry/apply — admin listing (requires secret header)
+// GET /api/registry/apply — admin listing (requires x-admin-secret header)
 // ---------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
@@ -240,9 +262,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const list = Array.from(applications.values()).sort(
-    (a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
-  );
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from("applications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
 
-  return NextResponse.json({ count: list.length, applications: list });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const rows = (data ?? []) as ApplicationRow[];
+  return NextResponse.json({ count: rows.length, applications: rows });
 }

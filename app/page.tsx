@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getCertified, getRegistryStats } from "../lib/registry";
 
-export default function Home() {
-  const certs = getCertified().slice(0, 3);
-  const stats = getRegistryStats();
+export default async function Home() {
+  const allCerts = await getCertified();
+  const certs = allCerts.slice(0, 3);
+  const stats = await getRegistryStats();
 
   return (
     <div style={{ background: "var(--bg-base)" }}>
