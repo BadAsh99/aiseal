@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { getCertified, getRegistryStats } from "../lib/registry";
 
+// Render on each request — the homepage reads the live Supabase registry
+// (getCertified + getRegistryStats). Build-time prerender would require the
+// Supabase env vars to be present in CI and would freeze the registry until the
+// next deploy. force-dynamic also means a Supabase outage at deploy time can't
+// fail the build.
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const allCerts = await getCertified();
   const certs = allCerts.slice(0, 3);
