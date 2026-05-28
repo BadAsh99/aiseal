@@ -107,7 +107,9 @@ export default function TrustScoreGauge({ score, size = 200, animated = true }: 
 
   return (
     <div style={{ display: "inline-block", position: "relative" }}>
-      <svg width={size} height={size * 0.78} viewBox={`0 0 ${size} ${size * 0.78}`} fill="none">
+      {/* Height was 0.78 → clipped the score-label baseline ("Exemplary"/"Trusted"
+          etc.). Bumped to 0.92 so the label sits inside the viewport. */}
+      <svg width={size} height={size * 0.92} viewBox={`0 0 ${size} ${size * 0.92}`} fill="none">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#f85149" />

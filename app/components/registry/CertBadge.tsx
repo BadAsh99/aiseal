@@ -142,8 +142,8 @@ export default function CertBadge({ vendor_name, tier, cert_id, status, score, s
       {/* Inner circle surface texture */}
       <circle cx={cx} cy={cy} r={innerR} fill="url(#ring-tex)" fillOpacity="0.08" />
 
-      {/* Shield icon at top */}
-      <g transform={`translate(${cx - dim * 0.055}, ${cy - innerR * 0.72}) scale(${dim * 0.0046})`}>
+      {/* Shield icon at top — sits clearly ABOVE the ACF-N tier text. */}
+      <g transform={`translate(${cx - dim * 0.055}, ${cy - innerR * 0.88}) scale(${dim * 0.0046})`}>
         <path
           d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z"
           fill={tc.secondaryColor}
@@ -218,31 +218,10 @@ export default function CertBadge({ vendor_name, tier, cert_id, status, score, s
         {tc.sublabel}
       </text>
 
-      {/* Status bar at bottom of inner circle */}
-      <rect
-        x={cx - innerR * 0.7}
-        y={cy + innerR * 0.68}
-        width={innerR * 1.4}
-        height={dim * 0.06}
-        rx={dim * 0.01}
-        fill={sc.color}
-        fillOpacity="0.15"
-        stroke={sc.color}
-        strokeWidth={dim * 0.004}
-        strokeOpacity="0.5"
-      />
-      <text
-        x={cx}
-        y={cy + innerR * 0.68 + dim * 0.043}
-        textAnchor="middle"
-        fontSize={fontSize.status}
-        fontWeight="700"
-        fontFamily="Inter, system-ui, sans-serif"
-        fill={sc.color}
-        letterSpacing="0.08em"
-      >
-        {sc.label}
-      </text>
+      {/* Status pill intentionally removed — clashed with tier color (green-on-gold
+          on ACF-3) and duplicated the LiveStatusBadge + top-of-page status pill
+          on the vendor page. Inactive/SUSPENDED/EXPIRED still dim the whole SVG
+          via the `isInactive` opacity above. */}
 
       {/* Cert ID arc text at bottom of outer ring */}
       <path
