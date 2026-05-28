@@ -44,7 +44,7 @@ export default function RegistryPage() {
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#00c853" }} />
-          Live Registry — Updated in real time
+          Private Pilot Registry — Founding Members
         </div>
 
         <h1

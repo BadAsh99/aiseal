@@ -5,8 +5,9 @@ import { getCertByVendorId, getCertified } from "../../../lib/registry";
 import type { CertTier, CertStatus } from "../../../lib/registry";
 import CertBadge from "../../components/registry/CertBadge";
 import TrustScoreGauge from "../../components/registry/TrustScoreGauge";
-import EmbedCodeBlock from "./EmbedCodeBlock";
-import LiveStatusBadge from "./LiveStatusBadge";
+// EmbedCodeBlock + LiveStatusBadge intentionally not imported during Private Pilot
+// — both were unbacked theater (shields.io forgeable PNG + setTimeout 'verified' fake).
+// Re-enable once HMAC-signed badges + /api/verify/{cert_id} ship.
 
 export const revalidate = 60;
 
@@ -112,7 +113,7 @@ export default async function VendorCertPage({
 
   const tm = TIER_META[cert.tier];
   const sm = STATUS_META[cert.status];
-  const verifyUrl = `https://aiseal.ai/api/verify/${cert.cert_id}`;
+  // verifyUrl removed — /api/verify/{cert_id} route doesn't exist yet (Pilot Program Notice on page).
 
   return (
     <div style={{ background: "var(--bg-base)", minHeight: "100vh" }}>
@@ -148,9 +149,8 @@ export default async function VendorCertPage({
                 score={cert.trust_score}
                 size="lg"
               />
-              <div className="w-full pt-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                <LiveStatusBadge certId={cert.cert_id} initialStatus={cert.status} />
-              </div>
+              {/* LiveStatusBadge intentionally removed — was setTimeout(900ms) theater. */}
+              {/* Re-enable when /api/verify/{cert_id} ships with HMAC-signed validation. */}
             </div>
 
             {/* TrustScore gauge */}
@@ -164,29 +164,23 @@ export default async function VendorCertPage({
               <TrustScoreGauge score={cert.trust_score} size={200} animated={true} />
             </div>
 
-            {/* Verify button */}
+            {/* Cryptographic verification — Pilot Program Notice */}
             <div
               className="rounded-xl p-5 flex flex-col gap-3"
               style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)" }}
             >
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                Verify Certificate
+                Cryptographic verification
               </p>
               <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                Independently verify this certificate&apos;s authenticity against the AISeal Verification Registry Service.
+                HMAC-signed badge + independent verification endpoint shipping in the next AISeal release. During the Private Pilot, this certificate is bound to its registry record above.
               </p>
-              <a
-                href={verifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-center px-4 py-2.5 rounded-md text-sm font-semibold"
-                style={{ background: "#0080ff", color: "#ffffff", textDecoration: "none" }}
+              <span
+                className="w-full text-center px-4 py-2.5 rounded-md text-xs font-semibold"
+                style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px dashed var(--border-mid)" }}
               >
-                Verify this certificate →
-              </a>
-              <p className="text-xs font-mono break-all" style={{ color: "var(--text-subtle)" }}>
-                {verifyUrl}
-              </p>
+                Verification endpoint — coming soon
+              </span>
             </div>
           </div>
 
@@ -287,7 +281,7 @@ export default async function VendorCertPage({
               </div>
             </div>
 
-            {/* Embed code */}
+            {/* Embed badge — Pilot Program Notice */}
             <div
               className="rounded-xl overflow-hidden"
               style={{ border: "1px solid var(--border-mid)" }}
@@ -302,9 +296,14 @@ export default async function VendorCertPage({
               </div>
               <div className="px-5 py-4" style={{ background: "var(--bg-elevated)" }}>
                 <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
-                  Add this HTML to your website or documentation to display a live-verified AISeal badge.
+                  Self-host badge embeds (HMAC-signed SVG + origin-bound verification) are shipping in the next AISeal release. We&apos;re intentionally not publishing a forgeable embed snippet during the Private Pilot.
                 </p>
-                <EmbedCodeBlock certId={cert.cert_id} vendorId={cert.vendor_id} tier={cert.tier} score={cert.trust_score} />
+                <span
+                  className="inline-block text-xs font-semibold px-3 py-1.5 rounded-md"
+                  style={{ background: "var(--bg-surface)", color: "var(--text-secondary)", border: "1px dashed var(--border-mid)" }}
+                >
+                  Cryptographically-signed badges — coming soon
+                </span>
               </div>
             </div>
 

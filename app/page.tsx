@@ -303,7 +303,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#00c853" }}>
-                Live Registry
+                Private Pilot Registry
               </p>
               <h2
                 className="text-3xl font-bold"
