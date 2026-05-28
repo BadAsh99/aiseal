@@ -50,14 +50,49 @@ export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedC
   };
 
   return (
-    <div className="relative">
+    <div
+      className="rounded-lg overflow-hidden"
+      style={{ background: "var(--bg-elevated, #0d0d0d)", border: "1px solid var(--border-mid)" }}
+    >
+      {/* Header strip carries the Copy button so it never overlaps the code. */}
       <div
-        className="rounded-lg p-4 font-mono text-xs leading-relaxed overflow-x-auto"
-        style={{
-          background: "var(--bg-elevated, #0d0d0d)",
-          border: "1px solid var(--border-mid)",
-          color: "#9ca3af",
-        }}
+        className="flex items-center justify-between px-3 py-2"
+        style={{ borderBottom: "1px solid var(--border-subtle)" }}
+      >
+        <span className="text-xs font-mono" style={{ color: "var(--text-muted)" }}>
+          embed.html
+        </span>
+        <button
+          onClick={handleCopy}
+          className="px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all"
+          style={{
+            background: copied ? "rgba(0,200,83,0.15)" : "rgba(255,255,255,0.06)",
+            color: copied ? "#00c853" : "var(--text-secondary)",
+            border: `1px solid ${copied ? "rgba(0,200,83,0.3)" : "var(--border-mid)"}`,
+          }}
+        >
+          {copied ? (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12L10 17L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Copied
+            </>
+          ) : (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+              Copy HTML
+            </>
+          )}
+        </button>
+      </div>
+
+      <div
+        className="p-4 font-mono text-xs leading-relaxed overflow-x-auto"
+        style={{ color: "#9ca3af" }}
       >
         <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
           <span style={{ color: "#7dd3fc" }}>&lt;a</span>
@@ -99,34 +134,10 @@ export default function EmbedCodeBlock({ certId, vendorId, tier, score }: EmbedC
         </pre>
       </div>
 
-      <button
-        onClick={handleCopy}
-        className="absolute top-2.5 right-2.5 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all"
-        style={{
-          background: copied ? "rgba(0,200,83,0.15)" : "rgba(255,255,255,0.06)",
-          color: copied ? "#00c853" : "var(--text-secondary)",
-          border: `1px solid ${copied ? "rgba(0,200,83,0.3)" : "var(--border-mid)"}`,
-        }}
+      <p
+        className="text-xs leading-relaxed px-4 pb-4"
+        style={{ color: "var(--text-muted)" }}
       >
-        {copied ? (
-          <>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12L10 17L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Copied
-          </>
-        ) : (
-          <>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-            Copy HTML
-          </>
-        )}
-      </button>
-
-      <p className="text-xs mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
         The badge is HMAC-signed and self-hosted on aiseal.ai. Validators can cross-check it
         against{" "}
         <span className="font-mono" style={{ color: "var(--text-secondary)" }}>
