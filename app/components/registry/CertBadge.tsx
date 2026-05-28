@@ -142,8 +142,8 @@ export default function CertBadge({ vendor_name, tier, cert_id, status, score, s
       {/* Inner circle surface texture */}
       <circle cx={cx} cy={cy} r={innerR} fill="url(#ring-tex)" fillOpacity="0.08" />
 
-      {/* Shield icon at top */}
-      <g transform={`translate(${cx - dim * 0.055}, ${cy - innerR * 0.72}) scale(${dim * 0.0046})`}>
+      {/* Shield icon at top — sits clearly ABOVE the ACF-N tier text. */}
+      <g transform={`translate(${cx - dim * 0.055}, ${cy - innerR * 0.88}) scale(${dim * 0.0046})`}>
         <path
           d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z"
           fill={tc.secondaryColor}
