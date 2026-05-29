@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { supabaseAdmin } from "../../../../lib/supabase/server";
+import { escapeMrkdwn } from "../../../../lib/slack-escape";
 
 interface ApplicationRow {
   id: string;
@@ -197,10 +198,11 @@ export async function POST(req: NextRequest) {
         {
           type: "section",
           fields: [
-            { type: "mrkdwn", text: `*Company*\n${company_name}` },
-            { type: "mrkdwn", text: `*Product*\n${product_name}${product_version ? " " + product_version : ""}` },
-            { type: "mrkdwn", text: `*Contact*\n${contact_name}` },
-            { type: "mrkdwn", text: `*Email*\n${email}` },
+            // F12 fix — escape all user-supplied fields before mrkdwn interpolation
+            { type: "mrkdwn", text: `*Company*\n${escapeMrkdwn(company_name)}` },
+            { type: "mrkdwn", text: `*Product*\n${escapeMrkdwn(product_name)}${product_version ? " " + escapeMrkdwn(product_version) : ""}` },
+            { type: "mrkdwn", text: `*Contact*\n${escapeMrkdwn(contact_name)}` },
+            { type: "mrkdwn", text: `*Email*\n${escapeMrkdwn(email)}` },
             { type: "mrkdwn", text: `*Industry*\n${industryLabel[industry] ?? industry}` },
             { type: "mrkdwn", text: `*Target Tier*\n${tierEmoji[tier_requested] ?? ""} ${tier_requested}` },
           ],
@@ -209,14 +211,14 @@ export async function POST(req: NextRequest) {
           type: "section",
           fields: [
             { type: "mrkdwn", text: `*Frameworks*\n${frameworkList}` },
-            { type: "mrkdwn", text: `*How they found us*\n${how_heard || "not specified"}` },
+            { type: "mrkdwn", text: `*How they found us*\n${escapeMrkdwn(how_heard || "not specified")}` },
           ],
         },
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*What their AI does*\n${description.slice(0, 300)}${description.length > 300 ? "…" : ""}`,
+            text: `*What their AI does*\n${escapeMrkdwn(description.slice(0, 300))}${description.length > 300 ? "…" : ""}`,
           },
         },
         { type: "divider" },
