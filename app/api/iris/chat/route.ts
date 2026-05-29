@@ -1,9 +1,17 @@
+// AISeal F4 close — hardened IRIS chat endpoint.
+//
+// Guard order: CORS preflight → Origin/Referer lock → per-IP rate limit
+// (30/hr) → global daily cap (500/day, Supabase-backed) → zod validation
+// → Anthropic call. Every call (success or block) is audit-logged to
+// public.iris_usage. api_key never touches the audit table.
+
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { rateLimit } from "@/app/lib/rate-limit";
+import { preflight, runGuard, logSuccess, logBlocked, withCors } from "@/lib/iris-guard";
 
 const MAX_MESSAGES = 30;
 const MAX_MESSAGE_LENGTH = 5_000;
+const MODEL = "claude-sonnet-4-6";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const IRIS_CHAT_SYSTEM_PROMPT = `You are IRIS — Integrated Risk Insight System. You are the AI security analysis layer inside AISeal, built on Ghost99RT.
@@ -30,38 +38,68 @@ interface Message {
   content: string;
 }
 
+export async function OPTIONS(req: NextRequest) {
+  return preflight(req) ?? new Response(null, { status: 405 });
+}
+
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-  const { ok } = rateLimit(ip, { maxRequests: 20, windowMs: 60_000 });
-  if (!ok) {
-    return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
+  // CORS preflight may slip through to POST if a client sends Origin + POST
+  // directly — we still apply the guard here.
+  const guard = await runGuard(req, "iris_chat");
+  if (!guard.ok) {
+    return withCors(
+      NextResponse.json({ error: guard.reason, message: guard.message }, { status: guard.status }),
+      req,
+    );
   }
+
+  const t0 = Date.now();
+  let promptChars = 0;
+  let replyChars = 0;
 
   try {
     const body = await req.json();
     const { messages: rawMessages }: { messages: Message[] } = body;
 
-    if (!rawMessages || rawMessages.length === 0) {
-      return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+    if (!rawMessages || !Array.isArray(rawMessages) || rawMessages.length === 0) {
+      await logBlocked({ ...guard, route: "iris_chat", reason: "validation" });
+      return withCors(NextResponse.json({ error: "No messages provided" }, { status: 400 }), req);
     }
 
     const messages = rawMessages.slice(-MAX_MESSAGES).map((m) => ({
       ...m,
       content: typeof m.content === "string" ? m.content.slice(0, MAX_MESSAGE_LENGTH) : m.content,
     }));
+    promptChars = messages.reduce(
+      (acc, m) => acc + (typeof m.content === "string" ? m.content.length : 0),
+      0,
+    );
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: MODEL,
       max_tokens: 400,
       system: IRIS_CHAT_SYSTEM_PROMPT,
       messages,
     });
 
     const reply = response.content[0].type === "text" ? response.content[0].text : "";
+    replyChars = reply.length;
 
-    return NextResponse.json({ reply });
+    await logSuccess({
+      route: "iris_chat",
+      ip_hash: guard.ip_hash,
+      origin: guard.origin,
+      user_agent: guard.user_agent,
+      model: MODEL,
+      duration_ms: Date.now() - t0,
+      prompt_chars: promptChars,
+      reply_chars: replyChars,
+    });
+
+    return withCors(NextResponse.json({ reply }), req);
   } catch (err) {
     console.error("IRIS chat error:", err);
-    return NextResponse.json({ error: "IRIS unavailable" }, { status: 500 });
+    await logBlocked({ ...guard, route: "iris_chat", reason: "llm_error" });
+    return withCors(NextResponse.json({ error: "IRIS unavailable" }, { status: 500 }), req);
   }
 }
