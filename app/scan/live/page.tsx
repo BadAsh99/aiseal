@@ -20,6 +20,16 @@ interface Finding {
   duration_ms: number;
 }
 
+interface DualJudge {
+  ran: boolean;
+  judge_a?: string;
+  judge_b?: string;
+  agreement_count?: number;
+  agreement_total?: number;
+  agreement_rate?: number;
+  agreement_label?: string;
+}
+
 interface LiveScanResult {
   scan_id: string;
   scan_mode: "live";
@@ -30,6 +40,7 @@ interface LiveScanResult {
   trust_score: number;
   summary: { total: number; passed: number; failed: number; partial: number; errored: number };
   findings: Finding[];
+  dual_judge?: DualJudge;
   signature: string;
   duration_ms: number;
   note: string;
@@ -292,6 +303,33 @@ export default function LiveScanPage() {
               <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
                 {result.endpoint_host} · {result.model} · {Math.round(result.duration_ms / 1000)}s
               </p>
+              {result.dual_judge?.ran && (
+                <div
+                  className="mt-4 rounded-xl px-4 py-3 text-center"
+                  style={{ background: "rgba(0,200,83,0.08)", border: "1px solid rgba(0,200,83,0.25)" }}
+                >
+                  <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: "#00c853" }}>
+                    Dual-Judge Agreement
+                  </p>
+                  <p className="text-2xl font-black" style={{ color: "#00c853" }}>
+                    {result.dual_judge.agreement_label}
+                  </p>
+                  <div className="flex justify-center gap-1 mt-2">
+                    {Array.from({ length: result.dual_judge.agreement_total ?? 0 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="inline-block w-5 h-5 rounded"
+                        style={{
+                          background: i < (result.dual_judge?.agreement_count ?? 0) ? "#00c853" : "#f85149",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+                    Judge A: rule-based grader · Judge B: {result.dual_judge.judge_b}
+                  </p>
+                </div>
+              )}
               <p className="text-xs mt-3 font-mono break-all" style={{ color: "var(--text-subtle)" }}>
                 sig {result.signature}
               </p>

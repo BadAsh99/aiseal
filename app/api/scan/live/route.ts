@@ -23,6 +23,7 @@ import { checkUrl } from "../../../../lib/scan-ssrf";
 import { PROBES, TOTAL_PROBE_WEIGHT, type Verdict } from "../../../../lib/scan-probes";
 import { callLlm, type EndpointType } from "../../../../lib/scan-client";
 import { signBadge } from "../../../../lib/badge-hmac";
+import { runDualJudge } from "../../../../lib/scan-judge";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -233,19 +234,32 @@ export async function POST(req: Request) {
   const failed = findings.filter((f) => f.verdict === "fail").length;
   const partial = findings.filter((f) => f.verdict === "partial").length;
   const errored = findings.filter((f) => f.verdict === "error").length;
-  const duration_ms = Date.now() - t0;
   const scan_id = crypto.randomUUID();
   const scanned_at = new Date().toISOString();
 
-  // Sign the result so it can be cross-checked later (using same HMAC infra
-  // as the badge). cert_id placeholder is the scan_id so the signature is
-  // scoped to this specific scan run.
+  // Judge B — run in parallel with signing, doesn't block the response if it fails.
+  const dualJudgePromise = runDualJudge(
+    findings
+      .filter((f) => f.verdict !== "error")
+      .map((f, i) => ({
+        id: f.id,
+        owasp: f.owasp,
+        title: f.title,
+        prompt: PROBES[i]?.prompt ?? "",
+        judge_a_verdict: f.verdict as Verdict,
+        response_text: f.excerpt ?? f.evidence,
+      }))
+  ).catch(() => null);
+
   const signature = signBadge({
     cert_id: scan_id,
     vendor_domain: vendor_domain ?? null,
     score,
     issued_date: scanned_at.slice(0, 10),
   });
+
+  const dualJudge = await dualJudgePromise;
+  const duration_ms = Date.now() - t0;
 
   // Audit log — NO api_key, NO full responses, just the verdicts + evidence
   try {
@@ -278,21 +292,36 @@ export async function POST(req: Request) {
       duration_ms,
       ssrf_check: ssrf.reason,
       errored: false,
+      dual_judge_ran: dualJudge?.ran ?? false,
+      judge_b_verdicts: dualJudge?.judge_b_verdicts ?? null,
+      judge_agreement_count: dualJudge?.judge_agreement_count ?? null,
+      judge_agreement_rate: dualJudge?.judge_agreement_rate ?? null,
+      judge_b_model: dualJudge?.judge_b_model ?? null,
+      grader_version: "v2",
     });
   } catch (e) {
     console.error("[scan/live] audit log insert failed", e);
-    // Don't fail the response — the scan still completed successfully.
   }
 
   return NextResponse.json({
     scan_id,
-    scan_mode: "live",                 // distinguishes from the static preview /api/scan
+    scan_mode: "live",
     scanned_at,
     endpoint_host: ssrf.host,
     endpoint_type,
     model,
     trust_score: score,
     total_probe_weight: TOTAL_PROBE_WEIGHT,
+    dual_judge: dualJudge?.ran ? {
+      ran: true,
+      judge_a: "deterministic-grader-v2",
+      judge_b: dualJudge.judge_b_model,
+      agreement_count: dualJudge.judge_agreement_count,
+      agreement_total: findings.filter((f) => f.verdict !== "error").length,
+      agreement_rate: dualJudge.judge_agreement_rate,
+      agreement_label: `${dualJudge.judge_agreement_count}/${findings.filter((f) => f.verdict !== "error").length} judges agree`,
+      verdicts: dualJudge.judge_b_verdicts,
+    } : { ran: false },
     summary: {
       total: findings.length,
       passed,
