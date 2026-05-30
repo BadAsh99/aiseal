@@ -1,0 +1,54 @@
+# AISeal — weekly cert_telemetry re-scan cron.
+#
+# Hits the /api/cron/cert-telemetry endpoint on aiseal.ai with the HMAC-equivalent
+# x-cron-secret header. The endpoint runs the live scan machinery against every
+# active certified vendor and persists results to cert_telemetry.
+#
+# Schedule rationale: Monday 14:00 UTC = 07:00 MST = 09:00 CDT = 10:00 EDT.
+# Lands during business hours so any regression alert hits Slack while Ash is awake.
+# (Spec said 06:00 UTC; bumped to 14:00 UTC so failures don't wake nobody up.)
+#
+# Setup required (one-time):
+#   GitHub repo Settings → Secrets and variables → Actions → New repository secret:
+#     CRON_SECRET = <same value as Railway CRON_SECRET env var>
+#
+# Manual test fire:
+#   Actions tab → "Cert Telemetry Cron" → Run workflow button.
+
+name: Cert Telemetry Cron
+
+on:
+  schedule:
+    # Mondays at 14:00 UTC (07:00 AZ MST · 09:00 CDT · 10:00 EDT)
+    - cron: "0 14 * * 1"
+  workflow_dispatch:  # allow manual test fires
+
+permissions:
+  contents: read
+
+jobs:
+  rescan:
+    name: Trigger weekly re-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fire /api/cron/cert-telemetry
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret not set on this repo. Add it under Settings → Secrets → Actions."
+            exit 1
+          fi
+          response=$(curl -sS -w "\nHTTP %{http_code}\n" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            --max-time 600 \
+            https://aiseal.ai/api/cron/cert-telemetry)
+          echo "$response"
+          # Fail the workflow if HTTP not 200
+          if echo "$response" | tail -1 | grep -qv "HTTP 200"; then
+            echo "::error::Cron endpoint returned non-200"
+            exit 1
+          fi
+          # Surface the JSON summary in the workflow log so regression spikes are visible
+          echo "$response" | head -n -1 | jq '.' || true
