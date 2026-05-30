@@ -550,7 +550,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+  // F11 fix — use the LAST x-forwarded-for entry (Railway/proxy-set), not the
+  // first (client-controlled, spoofable). An attacker rotating the first XFF
+  // entry would bypass the per-IP rate limit. See [[audit-3vs-aiseal-round2]].
+  const xff = req.headers.get("x-forwarded-for");
+  const ip =
+    (xff ? xff.split(",").map((p) => p.trim()).filter(Boolean).at(-1) : null) ??
+    req.headers.get("x-real-ip")?.trim() ??
+    "unknown";
   const { ok } = rateLimit(ip, { maxRequests: 30, windowMs: 60_000 });
   if (!ok) {
     return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 });
