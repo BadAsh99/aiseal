@@ -7,6 +7,7 @@ import CertBadge from "../../components/registry/CertBadge";
 import TrustScoreGauge from "../../components/registry/TrustScoreGauge";
 import EmbedCodeBlock from "./EmbedCodeBlock";
 import LiveStatusBadge from "./LiveStatusBadge";
+import PostureTimeline from "./PostureTimeline";
 
 // Dynamic — registry data is in Supabase; pages render on-demand for the Pilot.
 // Re-introduce generateStaticParams once volume justifies + build env always has Supabase creds.
@@ -283,6 +284,9 @@ export default async function VendorCertPage({
                 <CheckRow label="EU AI Act" checked={cert.frameworks.euAiAct} />
               </div>
             </div>
+
+            {/* Posture Over Time — v2.1 Validation: weekly re-scan telemetry per cert */}
+            <PostureTimeline certId={cert.cert_id} baselineScore={cert.trust_score} />
 
             {/* Embed code */}
             <div
