@@ -1,0 +1,40 @@
+language: en-US
+early_access: false
+reviews:
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!node_modules/**"
+    - "!.next/**"
+    - "!dist/**"
+    - "!*.lock"
+    - "!*.snap"
+  path_instructions:
+    - path: "**/lib/**/*.ts"
+      instructions: |
+        Server-side library code. Flag any:
+        - SQL injection vectors (template literals into raw queries)
+        - SSRF vectors (fetch with user input as URL host)
+        - Missing input validation at trust boundaries
+        - Secret material logged or returned in responses
+    - path: "**/api/**/route.ts"
+      instructions: |
+        Next.js API route. Flag any:
+        - Missing auth check on mutating routes
+        - User input flowing to unsanitized destinations
+        - Missing rate limiting on cost-sensitive endpoints
+        - service_role Supabase client used on public routes without auth
+    - path: "supabase/migrations/**"
+      instructions: |
+        Postgres migration. Flag any:
+        - Tables without RLS enabled
+        - New tables with anon SELECT/INSERT without justification
+        - DROP statements without IF EXISTS guard
+chat:
+  auto_reply: true

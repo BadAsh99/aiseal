@@ -1,0 +1,86 @@
+name: Claude Multi-Lens PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          DIFF=$(git diff --unified=3 "origin/${{ github.base_ref }}...HEAD" | head -c 100000)
+          # base64 to survive shell escaping into JSON
+          echo "diff_b64=$(echo "$DIFF" | base64)" >> $GITHUB_OUTPUT
+
+      - name: Run Claude multi-lens review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY not set; skipping review."
+            exit 0
+          fi
+          DIFF=$(echo "${{ steps.diff.outputs.diff_b64 }}" | base64 -d)
+          if [ -z "$DIFF" ]; then
+            echo "Empty diff; skipping review."
+            exit 0
+          fi
+          # Compose the prompt — multi-lens (security/correctness/perf/tests) in one pass
+          PROMPT=$(cat <<EOF
+          You are a senior code reviewer doing a multi-lens review of this pull request diff.
+          Be specific and concise. Cite file:line. No nitpicking. No style comments.
+
+          Apply FOUR independent lenses, in this order:
+
+          1. SECURITY — auth bypasses, SQL/SSRF/XSS injection, secret leakage, RLS gaps,
+             missing rate limits on cost-sensitive endpoints, unauthenticated mutating routes.
+          2. CORRECTNESS — logic bugs, off-by-one, wrong error handling, race conditions,
+             unhandled null/undefined paths, broken state mutations.
+          3. PERFORMANCE — N+1 queries, unbounded loops, missing indexes implied by new queries,
+             memory leaks, blocking I/O on hot paths.
+          4. TESTS — what test cases the diff added/needs that aren't there yet.
+
+          If a lens has nothing to flag, say "Clean — no [lens] findings."
+          End with a one-line verdict: APPROVE / REQUEST_CHANGES / COMMENT.
+
+          === DIFF ===
+          $DIFF
+          === END DIFF ===
+          EOF
+          )
+
+          # Call Anthropic API
+          RESPONSE=$(curl -sS https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$(jq -nc \
+              --arg prompt "$PROMPT" \
+              '{model: "claude-sonnet-4-6", max_tokens: 4000, messages: [{role: "user", content: $prompt}]}')")
+
+          REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // .error.message // "No response"')
+          echo "Review:"
+          echo "$REVIEW"
+
+          # Post as PR comment via GitHub API
+          BODY=$(jq -Rs --arg body "## 🤖 Claude Multi-Lens Review\n\n$REVIEW" '. = $body' <<< "")
+          curl -sS -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d "{\"body\": $BODY}"
