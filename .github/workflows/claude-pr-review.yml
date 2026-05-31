@@ -19,30 +19,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get PR diff
-        id: diff
-        run: |
-          git fetch origin "${{ github.base_ref }}" --depth=1
-          DIFF=$(git diff --unified=3 "origin/${{ github.base_ref }}...HEAD" | head -c 100000)
-          # base64 to survive shell escaping into JSON
-          echo "diff_b64=$(echo "$DIFF" | base64)" >> $GITHUB_OUTPUT
-
       - name: Run Claude multi-lens review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
+          set -euo pipefail
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
             echo "::warning::ANTHROPIC_API_KEY not set; skipping review."
             exit 0
           fi
-          DIFF=$(echo "${{ steps.diff.outputs.diff_b64 }}" | base64 -d)
+
+          git fetch origin "$BASE_REF" --depth=1
+          DIFF=$(git diff --unified=3 "origin/${BASE_REF}...HEAD" | head -c 100000)
           if [ -z "$DIFF" ]; then
             echo "Empty diff; skipping review."
             exit 0
           fi
-          # Compose the prompt — multi-lens (security/correctness/perf/tests) in one pass
-          PROMPT=$(cat <<EOF
-          You are a senior code reviewer doing a multi-lens review of this pull request diff.
+
+          # Compose prompt + payload via jq so we never have to shell-escape the diff
+          PROMPT_PREAMBLE='You are a senior code reviewer doing a multi-lens review of this pull request diff.
           Be specific and concise. Cite file:line. No nitpicking. No style comments.
 
           Apply FOUR independent lenses, in this order:
@@ -53,34 +52,37 @@ jobs:
              unhandled null/undefined paths, broken state mutations.
           3. PERFORMANCE — N+1 queries, unbounded loops, missing indexes implied by new queries,
              memory leaks, blocking I/O on hot paths.
-          4. TESTS — what test cases the diff added/needs that aren't there yet.
+          4. TESTS — what test cases the diff added/needs that aren'"'"'t there yet.
 
           If a lens has nothing to flag, say "Clean — no [lens] findings."
           End with a one-line verdict: APPROVE / REQUEST_CHANGES / COMMENT.
 
-          === DIFF ===
-          $DIFF
-          === END DIFF ===
-          EOF
-          )
+          === DIFF ==='
+
+          # Build JSON payload (jq handles escaping safely)
+          PAYLOAD=$(jq -nc \
+            --arg preamble "$PROMPT_PREAMBLE" \
+            --arg diff "$DIFF" \
+            '{
+              model: "claude-sonnet-4-6",
+              max_tokens: 4000,
+              messages: [
+                { role: "user", content: ($preamble + "\n" + $diff + "\n=== END DIFF ===") }
+              ]
+            }')
 
           # Call Anthropic API
           RESPONSE=$(curl -sS https://api.anthropic.com/v1/messages \
             -H "x-api-key: $ANTHROPIC_API_KEY" \
             -H "anthropic-version: 2023-06-01" \
             -H "content-type: application/json" \
-            -d "$(jq -nc \
-              --arg prompt "$PROMPT" \
-              '{model: "claude-sonnet-4-6", max_tokens: 4000, messages: [{role: "user", content: $prompt}]}')")
+            -d "$PAYLOAD")
 
-          REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // .error.message // "No response"')
-          echo "Review:"
+          REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // .error.message // "No response from Claude"')
+          echo "===Review==="
           echo "$REVIEW"
+          echo "==========="
 
-          # Post as PR comment via GitHub API
-          BODY=$(jq -Rs --arg body "## 🤖 Claude Multi-Lens Review\n\n$REVIEW" '. = $body' <<< "")
-          curl -sS -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            -d "{\"body\": $BODY}"
+          # Post as PR comment via gh CLI (handles auth automatically)
+          BODY=$(printf '## 🤖 Claude Multi-Lens Review\n\n%s' "$REVIEW")
+          echo "$BODY" | gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file -
