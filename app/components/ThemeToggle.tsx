@@ -8,6 +8,7 @@ export default function ThemeToggle() {
   useEffect(() => {
     const stored = localStorage.getItem("aiseal-theme") as "dark" | "light" | null;
     const initial = stored ?? "dark";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard theme-from-localStorage sync; avoids SSR hydration mismatch (next-themes does the same)
     setTheme(initial);
     document.documentElement.setAttribute("data-theme", initial);
   }, []);

@@ -32,6 +32,7 @@ export default function TrustScoreGauge({ score, size = 200, animated = true }: 
 
   useEffect(() => {
     if (!animated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- snaps the gauge to its final score when animation is off (cosmetic)
       setDisplayScore(clampedScore);
       return;
     }

@@ -131,6 +131,7 @@ export default async function PostureTimeline({ certId, baselineScore }: Props) 
   // Reverse to oldest→newest for the sparkline.
   const chronological = [...rows].reverse();
   const latest = rows[0];
+  // eslint-disable-next-line react-hooks/purity -- server component; per-request "now" threshold is intended
   const fourWeeksAgo = Date.now() - 28 * 24 * 60 * 60 * 1000;
   const recentRegression = rows.find(
     (r) => r.regression_flag && new Date(r.scanned_at).getTime() >= fourWeeksAgo,

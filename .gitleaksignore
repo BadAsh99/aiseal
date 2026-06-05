@@ -1,0 +1,5 @@
+e90f1499ff734dfffdbb6a3542b5cc63fce5d30c:app/scan/page.tsx:generic-api-key:113
+9812e31dfd3ff54a335f0f589b15f9c341327f01:tests/red_team_prompts.txt:generic-api-key:17
+# AISeal — verified-synthetic red-team test fixtures (LLM02 scan payloads), reviewed 2026-06-05. Not real secrets.
+727eb7a8ff2af95efde52be88faa89faebfbe289:vitest.config.ts:generic-api-key:11
+# ^ vitest.config.ts test-only AISEAL_BADGE_SECRET (fake, satisfies getSecret() in unit tests) — reviewed 2026-06-05
