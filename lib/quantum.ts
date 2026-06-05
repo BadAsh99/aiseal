@@ -149,7 +149,7 @@ function probeTLS(hostname: string, port: number = 443, timeoutMs: number = 10_0
           kex_type: kexInfo?.type ?? "RSA",   // If no ephemeral key, it's static RSA
           kex_name: kexInfo?.name ?? "RSA",
           kex_size: kexInfo?.size ?? 0,
-          cert_sig_alg: (cert as any)?.sigalg ?? "unknown",
+          cert_sig_alg: (cert as { sigalg?: string })?.sigalg ?? "unknown",
           cert_subject_cn: typeof cert?.subject?.CN === "string" ? cert.subject.CN : (typeof cert?.subject?.O === "string" ? cert.subject.O : hostname),
           cert_valid_to: cert?.valid_to ?? "unknown",
         };

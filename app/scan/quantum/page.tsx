@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 interface QRFinding {
   check: string;
@@ -323,7 +324,7 @@ export default function QuantumScanPage() {
                 AISeal QR-1 and QR-2 certifications go in the public registry — visible to enterprise buyers.
               </div>
             </div>
-            <a
+            <Link
               href="/registry/apply"
               style={{
                 padding: "0.5rem 1rem", background: "#00c853", color: "#000",
@@ -332,7 +333,7 @@ export default function QuantumScanPage() {
               }}
             >
               Apply →
-            </a>
+            </Link>
           </div>
         </div>
       )}

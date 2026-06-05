@@ -55,7 +55,7 @@ export default function Nav() {
               </Link>
             ))}
           {pathname !== "/registry/apply" && (
-            <a
+            <Link
               href="/registry/apply"
               className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
               style={{
@@ -65,7 +65,7 @@ export default function Nav() {
               }}
             >
               Get Certified
-            </a>
+            </Link>
           )}
         </div>
         <ThemeToggle />
@@ -110,14 +110,14 @@ export default function Nav() {
             </Link>
           ))}
           {pathname !== "/registry/apply" && (
-            <a
+            <Link
               href="/registry/apply"
               onClick={() => setMobileOpen(false)}
               className="text-sm font-semibold py-2 px-3 rounded-md mt-1 text-center"
               style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
               Get Certified
-            </a>
+            </Link>
           )}
         </div>
       )}
