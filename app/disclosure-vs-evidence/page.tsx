@@ -110,7 +110,7 @@ export default function DisclosureVsEvidencePage() {
               <Bullet>OWASP LLM Top 10 + ASI01-10 red-team scan · scored 0-100</Bullet>
               <Bullet>HMAC-signed badge · cryptographically verifiable</Bullet>
               <Bullet>Origin-bound verify endpoint · /api/verify/{`{cert_id}`}</Bullet>
-              <Bullet>Annual recert + Ghost99RT runtime monitoring (ACF-3)</Bullet>
+              <Bullet>Annual recert · Ghost99RT runtime monitoring (ACF-3 · in development)</Bullet>
             </ul>
             <p className="mt-5 text-xs italic" style={{ color: "#00c853" }}>
               Procurement-grade. Auditor-defensible. Forge-resistant.
@@ -182,8 +182,8 @@ export default function DisclosureVsEvidencePage() {
           />
           <Pillar
             number="04"
-            title="Runtime monitoring (ACF-3)"
-            body="Ghost99RT watches the production model for behavioral drift after issuance. If the cert was earned and then quietly degraded, we know. Disclosure registries capture a snapshot; AISeal ACF-3 maintains a posture."
+            title="Runtime monitoring (ACF-3 · roadmap)"
+            body="ACF-3 is the continuous-monitoring tier on our roadmap. Ghost99RT (in development) is built to watch the production model for behavioral drift after issuance, so a cert that's earned and then quietly degrades doesn't silently stay valid. A disclosure registry captures a one-time snapshot; ACF-3 is designed to maintain a posture."
           />
         </div>
       </section>
