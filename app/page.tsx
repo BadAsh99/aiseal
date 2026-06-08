@@ -320,7 +320,9 @@ export default async function Home() {
                 AI systems you can trust.
               </h2>
               <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
-                {stats.total_vendors} certified vendors · {stats.active_certifications} active certifications · updated in real time
+                {stats.total_vendors > 0
+                  ? `${stats.total_vendors} certified vendors · ${stats.active_certifications} active certifications · updated in real time`
+                  : "Founding cohort in assessment · applications open"}
               </p>
             </div>
             <Link
@@ -332,12 +334,26 @@ export default async function Home() {
             </Link>
           </div>
 
-          {/* Registry preview cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-            {certs.map((cert) => (
-              <RegistryPreviewCard key={cert.cert_id} cert={cert} />
-            ))}
-          </div>
+          {/* Registry preview cards — honest empty state pre-launch (no fabricated vendors) */}
+          {certs.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+              {certs.map((cert) => (
+                <RegistryPreviewCard key={cert.cert_id} cert={cert} />
+              ))}
+            </div>
+          ) : (
+            <div
+              className="rounded-xl p-8 text-center mb-10"
+              style={{ background: "var(--bg-surface)", border: "1px solid var(--border-mid)" }}
+            >
+              <p className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                The founding cohort is being assessed.
+              </p>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                Verified certifications will be published here as they&rsquo;re issued — every entry a real, independently-evaluated AI product. <Link href="/registry/apply" style={{ color: "#0080ff", textDecoration: "none" }}>Apply to be among the first →</Link>
+              </p>
+            </div>
+          )}
 
           {/* Enterprise buyer callout */}
           <div

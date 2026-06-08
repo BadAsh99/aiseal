@@ -302,23 +302,36 @@ export default function RegistryClient({ initialCerts }: RegistryClientProps) {
             </svg>
           </div>
           <div className="text-center">
-            <p className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No certifications match</p>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Try adjusting your filters or search query.
-            </p>
+            {initialCerts.length === 0 ? (
+              <>
+                <p className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No certifications published yet</p>
+                <p className="text-sm max-w-sm" style={{ color: "var(--text-muted)" }}>
+                  The founding cohort is being assessed. Verified certifications will appear here as they&rsquo;re issued — every entry is a real, independently-evaluated AI product.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No certifications match</p>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                  Try adjusting your filters or search query.
+                </p>
+              </>
+            )}
           </div>
-          <button
-            onClick={() => {
-              setQuery("");
-              setTierFilter("");
-              setIndustryFilter("");
-              setFrameworkFilter("");
-            }}
-            className="text-sm px-4 py-2 rounded-md"
-            style={{ background: "rgba(0,128,255,0.1)", color: "#0080ff", border: "1px solid rgba(0,128,255,0.25)" }}
-          >
-            Clear all filters
-          </button>
+          {initialCerts.length > 0 && (
+            <button
+              onClick={() => {
+                setQuery("");
+                setTierFilter("");
+                setIndustryFilter("");
+                setFrameworkFilter("");
+              }}
+              className="text-sm px-4 py-2 rounded-md"
+              style={{ background: "rgba(0,128,255,0.1)", color: "#0080ff", border: "1px solid rgba(0,128,255,0.25)" }}
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

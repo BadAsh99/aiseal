@@ -48,7 +48,7 @@ export default async function RegistryPage() {
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#00c853" }} />
-          Live Registry — Updated in real time
+          {certs.length > 0 ? "Live Registry — Updated in real time" : "Founding Cohort — Applications Open"}
         </div>
 
         <h1
@@ -64,8 +64,9 @@ export default async function RegistryPage() {
           className="text-lg max-w-lg mx-auto mb-8"
           style={{ color: "var(--text-secondary)", lineHeight: "1.6" }}
         >
-          The authoritative public record of AI systems that have been independently assessed,
-          verified, and certified against OWASP LLM Top 10, NIST AI RMF, and EU AI Act standards.
+          {certs.length > 0
+            ? "The public registry of AI products independently assessed against OWASP LLM Top 10, NIST AI RMF, and EU AI Act standards."
+            : "The founding cohort is being assessed now. Each entry will be an AI product independently evaluated against OWASP LLM Top 10, NIST AI RMF, and EU AI Act standards — and published here once certified."}
         </p>
 
         <div className="flex flex-wrap gap-3 justify-center">

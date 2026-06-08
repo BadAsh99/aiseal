@@ -108,6 +108,21 @@ function rowToCert(r: CertificationsRow): CertRecord {
   };
 }
 
+// ─── Covenant gate (2026-06-07) ──────────────────────────────────────────────
+// The registry is a TRUST surface — it must NEVER present fictional/demo vendors
+// as real, independently-certified companies. The Pilot seed (0004) inserted 5
+// illustrative vendors (vendor_domain null, later placeholder *.example.com).
+// Serving them publicly as "certified" was fabricated social proof — a covenant
+// breach and a credibility landmine. Until a REAL vendor is certified, the public
+// registry shows honestly empty. A cert is publishable only if it is bound to a
+// real, verifiable vendor domain. See [[feedback-dogfood-before-ship]].
+export function isPublishableCert(c: CertRecord): boolean {
+  const d = c.vendor_domain?.trim().toLowerCase();
+  if (!d) return false;                                                 // Pilot/demo rows have no domain
+  if (d === "example.com" || d.endsWith(".example.com")) return false;  // RFC-2606 placeholder
+  return true;
+}
+
 // ─── Query functions (all async now) ─────────────────────────────────────────
 
 export async function getCertified(): Promise<CertRecord[]> {
@@ -120,7 +135,7 @@ export async function getCertified(): Promise<CertRecord[]> {
     // Fail loud — silent empty array masks misconfiguration (today's $0 lesson).
     throw new Error(`registry.getCertified failed: ${error.message}`);
   }
-  return (data ?? []).map(rowToCert);
+  return (data ?? []).map(rowToCert).filter(isPublishableCert);
 }
 
 export async function getCertByVendorId(vendor_id: string): Promise<CertRecord | null> {
@@ -131,7 +146,9 @@ export async function getCertByVendorId(vendor_id: string): Promise<CertRecord |
     .eq("vendor_id", vendor_id)
     .maybeSingle();
   if (error) throw new Error(`registry.getCertByVendorId(${vendor_id}) failed: ${error.message}`);
-  return data ? rowToCert(data) : null;
+  if (!data) return null;
+  const cert = rowToCert(data);
+  return isPublishableCert(cert) ? cert : null;   // demo/pilot rows 404, same as the list
 }
 
 export async function getCertByCertId(cert_id: string): Promise<CertRecord | null> {
@@ -142,7 +159,9 @@ export async function getCertByCertId(cert_id: string): Promise<CertRecord | nul
     .eq("cert_id", cert_id)
     .maybeSingle();
   if (error) throw new Error(`registry.getCertByCertId(${cert_id}) failed: ${error.message}`);
-  return data ? rowToCert(data) : null;
+  if (!data) return null;
+  const cert = rowToCert(data);
+  return isPublishableCert(cert) ? cert : null;   // demo/pilot rows 404, same as the list
 }
 
 export async function searchRegistry(params: {
