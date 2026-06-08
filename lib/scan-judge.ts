@@ -18,14 +18,24 @@ export interface JudgeBVerdict {
   verdict: Verdict;
   evidence: string;
   model_used: string;
+  // v0.3.2: true when Judge B could not produce a verdict for this probe (API
+  // error / parse failure / timeout). A `judge_b_unavailable` verdict is NOT a
+  // dual-confirmation — it must NOT count toward agreement, and the probe is
+  // surfaced as "needs review" rather than silently inheriting Judge A.
+  judge_b_unavailable?: boolean;
 }
 
 export interface DualJudgeResult {
   judge_b_verdicts: JudgeBVerdict[];
-  judge_agreement_count: number;
-  judge_agreement_rate: number;
+  judge_agreement_count: number;       // dual-confirmed agreements (B available AND agrees)
+  judge_agreement_rate: number;        // agreements / probes WHERE B was available
   judge_b_model: string;
   ran: boolean;
+  // v0.3.2 honesty fields:
+  judge_b_unavailable_count: number;   // probes where B failed → no dual-confirmation
+  confidence: "dual-confirmed" | "partial" | "single-judge"; // overall confidence label
+  same_lineage: boolean;               // true when B (claude-haiku) judges a Claude target with no cross-lineage judge
+  lineage_note: string;                // human-readable independence caveat
 }
 
 interface ProbeToJudge {
@@ -84,7 +94,15 @@ async function judgeWithOpenAI(probes: ProbeToJudge[], apiKey: string): Promise<
       const verdict = (["pass", "fail", "partial"].includes(parsed.verdict ?? "") ? parsed.verdict : "partial") as Verdict;
       results.push({ probe_id: p.id, verdict, evidence: parsed.evidence ?? "No evidence", model_used: "gpt-4o" });
     } catch {
-      results.push({ probe_id: p.id, verdict: p.judge_a_verdict, evidence: "Judge B error — defaulting to Judge A", model_used: "gpt-4o-error" });
+      // HONEST FAILURE (v0.3.2): do NOT inherit Judge A's verdict (that would fake
+      // a dual-confirmation). Mark unavailable; the probe is "needs review".
+      results.push({
+        probe_id: p.id,
+        verdict: "partial",
+        evidence: "Judge B unavailable for this probe (OpenAI error) — not dual-confirmed; needs review.",
+        model_used: "gpt-4o-unavailable",
+        judge_b_unavailable: true,
+      });
     }
   }
   return results;
@@ -106,17 +124,41 @@ async function judgeWithHaiku(probes: ProbeToJudge[]): Promise<JudgeBVerdict[]> 
       const verdict = (["pass", "fail", "partial"].includes(parsed.verdict ?? "") ? parsed.verdict : "partial") as Verdict;
       results.push({ probe_id: p.id, verdict, evidence: parsed.evidence ?? "No evidence", model_used: "claude-haiku-4-5" });
     } catch {
-      results.push({ probe_id: p.id, verdict: p.judge_a_verdict, evidence: "Judge B error — defaulting to Judge A", model_used: "claude-haiku-error" });
+      // HONEST FAILURE (v0.3.2): do NOT inherit Judge A's verdict (that would fake
+      // a dual-confirmation). Mark unavailable; the probe is "needs review".
+      results.push({
+        probe_id: p.id,
+        verdict: "partial",
+        evidence: "Judge B unavailable for this probe (Haiku error) — not dual-confirmed; needs review.",
+        model_used: "claude-haiku-unavailable",
+        judge_b_unavailable: true,
+      });
     }
   }
   return results;
+}
+
+// Heuristic: is the scanned TARGET a Claude-lineage model? If Judge B is also
+// Claude (haiku), an agreement is same-lineage and a weaker independence claim.
+function targetIsClaude(probes: ProbeToJudge[]): boolean {
+  // We don't carry the target model id into the judge layer today, so we infer
+  // lineage from the judge selection: same-lineage risk only matters when Judge B
+  // IS Claude (no OpenAI cross-judge). The route sets endpoint_type; for now we
+  // flag conservatively whenever the only judge is Claude. (Kept as a function so
+  // a future target-model-id pass-through can refine this.)
+  return probes.length > 0;
 }
 
 export async function runDualJudge(
   probes: ProbeToJudge[],
 ): Promise<DualJudgeResult> {
   if (probes.length === 0) {
-    return { judge_b_verdicts: [], judge_agreement_count: 0, judge_agreement_rate: 0, judge_b_model: "none", ran: false };
+    return {
+      judge_b_verdicts: [], judge_agreement_count: 0, judge_agreement_rate: 0,
+      judge_b_model: "none", ran: false, judge_b_unavailable_count: 0,
+      confidence: "single-judge", same_lineage: false,
+      lineage_note: "No probes to judge.",
+    };
   }
 
   const openaiKey = process.env.OPENAI_API_KEY;
@@ -131,8 +173,33 @@ export async function runDualJudge(
     modelUsed = "claude-haiku-4-5";
   }
 
-  const agreements = verdicts.filter((v, i) => v.verdict === probes[i].judge_a_verdict).length;
-  const rate = probes.length > 0 ? agreements / probes.length : 0;
+  // Only count agreement where Judge B was actually AVAILABLE. An unavailable
+  // probe is neither agreement nor disagreement — it has no second opinion, so it
+  // cannot contribute to a dual-confirmation rate.
+  const available = verdicts.filter((v) => !v.judge_b_unavailable);
+  const unavailableCount = verdicts.length - available.length;
+  const agreements = verdicts.filter(
+    (v, i) => !v.judge_b_unavailable && v.verdict === probes[i].judge_a_verdict,
+  ).length;
+  const rate = available.length > 0 ? agreements / available.length : 0;
+
+  // Same-lineage flag: cross-lineage independence only holds when OpenAI is the
+  // judge. With Claude-haiku judging a (likely Claude) target and no OPENAI_API_KEY,
+  // flag the weaker independence claim honestly.
+  const sameLineage = !openaiKey && targetIsClaude(probes);
+
+  // Confidence label:
+  //   dual-confirmed — every probe got a second opinion (no unavailability)
+  //   partial        — some probes lost their second opinion
+  //   single-judge   — Judge B produced no verdicts at all (total failure)
+  let confidence: DualJudgeResult["confidence"];
+  if (available.length === 0) confidence = "single-judge";
+  else if (unavailableCount > 0) confidence = "partial";
+  else confidence = "dual-confirmed";
+
+  const lineageNote = openaiKey
+    ? "Cross-lineage: Judge A (deterministic) + Judge B (gpt-4o) — independent model families."
+    : "Same-lineage caveat: Judge B is claude-haiku. Independence comes from Judge A being deterministic (non-LLM), but there is no cross-vendor LLM judge (set OPENAI_API_KEY for cross-lineage confirmation).";
 
   return {
     judge_b_verdicts: verdicts,
@@ -140,5 +207,9 @@ export async function runDualJudge(
     judge_agreement_rate: Number(rate.toFixed(3)),
     judge_b_model: modelUsed,
     ran: true,
+    judge_b_unavailable_count: unavailableCount,
+    confidence,
+    same_lineage: sameLineage,
+    lineage_note: lineageNote,
   };
 }
