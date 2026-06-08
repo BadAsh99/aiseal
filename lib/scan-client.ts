@@ -10,12 +10,22 @@
 
 export type EndpointType = "openai" | "anthropic";
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface CallParams {
   endpoint_url: string;
   api_key: string;
   model: string;
   endpoint_type: EndpointType;
-  prompt: string;
+  // Single-shot probes pass `prompt`. Multi-turn probes pass `messages` (a full
+  // conversation). Exactly one is required; `messages` takes precedence if both
+  // are supplied. Keeping `prompt` optional preserves back-compat with every
+  // existing single-shot probe.
+  prompt?: string;
+  messages?: ChatMessage[];
   max_tokens?: number;
   timeout_ms?: number;
 }
@@ -59,6 +69,14 @@ export async function callLlm(params: CallParams): Promise<CallResult> {
   const t0 = Date.now();
   const timer = setTimeout(() => controller.abort(), timeout_ms);
 
+  // Build the message list: an explicit multi-turn conversation if provided,
+  // otherwise a single user turn from `prompt`. Both endpoint schemas accept
+  // a `messages: [{role, content}]` array, so this normalizes cleanly.
+  const messages: ChatMessage[] =
+    params.messages && params.messages.length > 0
+      ? params.messages
+      : [{ role: "user", content: params.prompt ?? "" }];
+
   try {
     let body: Record<string, unknown>;
     let headers: Record<string, string>;
@@ -72,7 +90,7 @@ export async function callLlm(params: CallParams): Promise<CallResult> {
       body = {
         model: params.model,
         max_tokens,
-        messages: [{ role: "user", content: params.prompt }],
+        messages,
       };
     } else {
       // OpenAI-compatible
@@ -83,7 +101,7 @@ export async function callLlm(params: CallParams): Promise<CallResult> {
       body = {
         model: params.model,
         max_tokens,
-        messages: [{ role: "user", content: params.prompt }],
+        messages,
         temperature: 0,                   // deterministic-ish for grading
       };
     }

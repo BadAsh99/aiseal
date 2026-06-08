@@ -20,7 +20,13 @@ import { z } from "zod";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { supabaseAdmin } from "../../../../lib/supabase/server";
 import { checkUrl } from "../../../../lib/scan-ssrf";
-import { PROBES, TOTAL_PROBE_WEIGHT, type Verdict } from "../../../../lib/scan-probes";
+import {
+  PROBES,
+  TOTAL_PROBE_WEIGHT,
+  OWASP_CATEGORIES,
+  MULTITURN_PROBE_COUNT,
+  type Verdict,
+} from "../../../../lib/scan-probes";
 import { callLlm, type EndpointType } from "../../../../lib/scan-client";
 import { signBadge } from "../../../../lib/badge-hmac";
 import { runDualJudge } from "../../../../lib/scan-judge";
@@ -98,12 +104,15 @@ async function runProbes(
       if (i >= PROBES.length) return;
       const probe = PROBES[i];
       const t0 = Date.now();
+      // Multi-turn probes carry a `messages` conversation; single-shot probes
+      // carry a `prompt`. Pass whichever is present — callLlm normalizes both.
       const call = await callLlm({
         endpoint_url,
         api_key,
         model,
         endpoint_type,
         prompt: probe.prompt,
+        messages: probe.messages,
         max_tokens: 400,
         timeout_ms: 15_000,
       });
@@ -238,14 +247,26 @@ export async function POST(req: Request) {
   const scanned_at = new Date().toISOString();
 
   // Judge B — run in parallel with signing, doesn't block the response if it fails.
+  // Look the probe prompt up BY ID (not by post-filter index — filtering out error
+  // findings shifts indices, and multi-turn probes have no single `prompt`; we
+  // render their conversation for the judge's context instead).
+  const probeById = new Map(PROBES.map((p) => [p.id, p]));
+  const renderProbePrompt = (id: string): string => {
+    const p = probeById.get(id);
+    if (!p) return "";
+    if (p.messages && p.messages.length > 0) {
+      return p.messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
+    }
+    return p.prompt ?? "";
+  };
   const dualJudgePromise = runDualJudge(
     findings
       .filter((f) => f.verdict !== "error")
-      .map((f, i) => ({
+      .map((f) => ({
         id: f.id,
         owasp: f.owasp,
         title: f.title,
-        prompt: PROBES[i]?.prompt ?? "",
+        prompt: renderProbePrompt(f.id),
         judge_a_verdict: f.verdict as Verdict,
         response_text: f.excerpt ?? f.evidence,
       }))
@@ -297,7 +318,10 @@ export async function POST(req: Request) {
       judge_agreement_count: dualJudge?.judge_agreement_count ?? null,
       judge_agreement_rate: dualJudge?.judge_agreement_rate ?? null,
       judge_b_model: dualJudge?.judge_b_model ?? null,
-      grader_version: "v2",
+      judge_b_unavailable_count: dualJudge?.judge_b_unavailable_count ?? null,
+      judge_confidence: dualJudge?.confidence ?? null,
+      judge_same_lineage: dualJudge?.same_lineage ?? null,
+      grader_version: "v0.3.2",
     });
   } catch (e) {
     console.error("[scan/live] audit log insert failed", e);
@@ -314,12 +338,21 @@ export async function POST(req: Request) {
     total_probe_weight: TOTAL_PROBE_WEIGHT,
     dual_judge: dualJudge?.ran ? {
       ran: true,
-      judge_a: "deterministic-grader-v2",
+      judge_a: "deterministic-grader-v0.3.2",
       judge_b: dualJudge.judge_b_model,
+      // Agreement is counted ONLY over probes where Judge B was available, so the
+      // denominator reflects real dual-confirmations — not faked ones.
       agreement_count: dualJudge.judge_agreement_count,
-      agreement_total: findings.filter((f) => f.verdict !== "error").length,
+      agreement_total:
+        findings.filter((f) => f.verdict !== "error").length - dualJudge.judge_b_unavailable_count,
       agreement_rate: dualJudge.judge_agreement_rate,
-      agreement_label: `${dualJudge.judge_agreement_count}/${findings.filter((f) => f.verdict !== "error").length} judges agree`,
+      agreement_label: `${dualJudge.judge_agreement_count}/${
+        findings.filter((f) => f.verdict !== "error").length - dualJudge.judge_b_unavailable_count
+      } dual-confirmed judges agree`,
+      judge_b_unavailable_count: dualJudge.judge_b_unavailable_count,
+      confidence: dualJudge.confidence,
+      same_lineage: dualJudge.same_lineage,
+      lineage_note: dualJudge.lineage_note,
       verdicts: dualJudge.judge_b_verdicts,
     } : { ran: false },
     summary: {
@@ -328,6 +361,19 @@ export async function POST(req: Request) {
       failed,
       partial,
       errored,
+    },
+    // Scope-state the score: what was actually measured, so the number is never
+    // read as a comprehensive guarantee.
+    coverage: {
+      probes_total: findings.length,
+      single_shot: findings.length - MULTITURN_PROBE_COUNT,
+      multi_turn: MULTITURN_PROBE_COUNT,
+      owasp_categories: OWASP_CATEGORIES,
+      owasp_category_count: OWASP_CATEGORIES.length,
+      note:
+        `${findings.length - MULTITURN_PROBE_COUNT} single-shot + ${MULTITURN_PROBE_COUNT} multi-turn ` +
+        `probes across OWASP ${OWASP_CATEGORIES[0]}–${OWASP_CATEGORIES[OWASP_CATEGORIES.length - 1]}. ` +
+        "Score is scope-bounded to these probes — it is a behavioral signal, not a guarantee of safety.",
     },
     findings,
     signature,
