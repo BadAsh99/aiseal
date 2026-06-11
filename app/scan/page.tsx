@@ -354,7 +354,7 @@ function TrustScoreCircle({ score, findings }: { score: number; findings?: Findi
         </span>
       </div>
       <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
-        TrustScore
+        Preview Score
       </p>
     </div>
   );
@@ -390,7 +390,7 @@ function exportCSV(result: ScanResult, prompt: string) {
     ["AISeal TrustScan Report"],
     ["Generated", new Date(result.timestamp).toLocaleString()],
     ["Model", result.model],
-    ["TrustScore", String(result.score)],
+    ["Preview Score", String(result.score)],
     ["Risk Label", scoreLabel(result.score, result.findings)],
     ["Prompt", `"${prompt.replace(/"/g, '""')}"`],
     [],
@@ -1199,7 +1199,7 @@ export default function ScanPage() {
             TrustScan
           </h1>
           <p className="text-base" style={{ color: "var(--text-muted)" }}>
-            Test a prompt against the OWASP LLM Top 10. Get a TrustScore instantly.
+            Test a prompt against the OWASP LLM Top 10. Get a preview score instantly. Full behavioral TrustScore comes from the live cert scan.
           </p>
         </div>
 
