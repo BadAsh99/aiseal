@@ -1955,7 +1955,7 @@ function TestSuite() {
           </button>
           {avgScore !== null && (
             <div className="flex items-center gap-3">
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Avg TrustScore</span>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Avg Preview Score</span>
               <span className="text-2xl font-bold" style={{ color }}>{avgScore}</span>
               <span className="text-xs font-bold px-2 py-1 rounded" style={{ background: `${color}15`, color }}>
                 {scoreLabel(avgScore, results.flatMap((r) => r.findings))}
