@@ -1584,7 +1584,7 @@ export default function ScanPage() {
               features={[
                 "10 TrustScans per day",
                 "Full OWASP LLM Top 10 analysis",
-                "TrustScore + exportable report",
+                "Preview Score + exportable report",
                 "13-test red team suite",
               ]}
               cta="You're on this plan"
