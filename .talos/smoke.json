@@ -1,0 +1,21 @@
+{
+  "base_url": "https://aiseal.ai",
+  "env_file": ".env.local",
+  "supabase_url_var": "NEXT_PUBLIC_SUPABASE_URL",
+  "service_key_var": "SUPABASE_SERVICE_ROLE_KEY",
+  "anon_key_var": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "expected_tables": [
+    "certifications", "applications", "live_scans",
+    "verification_log", "iris_usage", "cert_telemetry"
+  ],
+  "private_tables": [
+    "applications", "live_scans", "verification_log", "iris_usage", "cert_telemetry"
+  ],
+  "auth_endpoints": [
+    { "method": "GET", "path": "/api/registry/apply", "expect": 401, "body": "" },
+    { "method": "GET", "path": "/api/cron/cert-telemetry", "expect": 401, "body": "" }
+  ],
+  "route_health": [
+    { "method": "POST", "path": "/api/scan", "body": "{}", "bad": [500] }
+  ]
+}
