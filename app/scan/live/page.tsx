@@ -400,13 +400,6 @@ export default function LiveScanPage() {
             </div>
 
             <div className="flex flex-wrap gap-3 mt-2">
-              <Link
-                href="/registry/apply"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold"
-                style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
-              >
-                Apply for Certification with this score →
-              </Link>
               <button
                 onClick={() => {
                   setResult(null);

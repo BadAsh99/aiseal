@@ -34,7 +34,7 @@ export default async function Home() {
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#00c853" }} />
-          Private Pilot Program — Now Accepting Applications
+          Independent AI Security Research Project
         </div>
 
         <h1
@@ -56,11 +56,11 @@ export default async function Home() {
 
         <div className="flex items-center gap-4 flex-wrap justify-center mb-10">
           <Link
-            href="/registry/apply"
+            href="/scan"
             className="px-7 py-3.5 rounded-md font-semibold text-sm"
             style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
           >
-            Apply for Certification
+            Run a Free Scan
           </Link>
           <Link
             href="/registry"
@@ -283,8 +283,8 @@ export default async function Home() {
               badge="Annual Certification"
               badgeColor="#00c853"
               description="Third-party AI vendor certification. Independently assessed, publicly listed, annually recertified. The SOC 2 for AI systems."
-              cta="Apply for Certification"
-              href="/registry/apply"
+              cta="Read the Framework"
+              href="/disclosure-vs-evidence"
               accent="#00c853"
             />
             <ProductCard
@@ -350,7 +350,7 @@ export default async function Home() {
                 The founding cohort is being assessed.
               </p>
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Verified certifications will be published here as they&rsquo;re issued — every entry a real, independently-evaluated AI product. <Link href="/registry/apply" style={{ color: "#0080ff", textDecoration: "none" }}>Apply to be among the first →</Link>
+                Verified certifications will be published here as they&rsquo;re issued — every entry a real, independently-evaluated AI product.
               </p>
             </div>
           )}
@@ -362,10 +362,10 @@ export default async function Home() {
           >
             <div className="flex flex-col gap-3 flex-1">
               <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                For Enterprise Buyers
+                Why a Registry
               </p>
               <p className="font-bold text-base" style={{ color: "var(--text-primary)" }}>
-                Your procurement team checks this registry before signing AI vendor contracts.
+                A public registry gives procurement teams evidence to check before signing AI vendor contracts.
               </p>
               <div className="flex flex-wrap gap-4 mt-1">
                 {[
@@ -415,21 +415,21 @@ export default async function Home() {
               High-risk AI systems will require documented evidence. Are you ready?
             </h3>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              AISeal Cert maps directly to Article 9 risk management requirements and generates the
-              compliance documentation you need before the deadline.
+              The AISeal framework maps OWASP LLM Top 10 testing to Article 9 risk management
+              requirements, so the evidence is documented, not just disclosed.
             </p>
           </div>
           <Link
-            href="/registry/apply"
+            href="/disclosure-vs-evidence"
             className="whitespace-nowrap px-6 py-3 rounded-md font-semibold text-sm flex-shrink-0"
             style={{ background: "#0080ff", color: "#ffffff", textDecoration: "none" }}
           >
-            Get Ahead of It
+            Read the Framework
           </Link>
         </div>
       </section>
 
-      {/* ─────────────────────────── APPLY CTA ─────────────────────────── */}
+      {/* ─────────────────────────── TRY IT ─────────────────────────── */}
       <section className="px-6 py-24">
         <div className="max-w-3xl mx-auto text-center">
           <div
@@ -441,34 +441,34 @@ export default async function Home() {
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#00c853" }} />
-            Private Pilot Program — Limited Spots
+            Research Prototype
           </div>
 
           <h2
             className="text-4xl font-bold mb-5"
             style={{ color: "var(--text-primary)", letterSpacing: "-0.03em", lineHeight: "1.1" }}
           >
-            Your AI product
+            See it work
             <br />
-            <span style={{ color: "#00c853" }}>should be in this registry.</span>
+            <span style={{ color: "#00c853" }}>on your own system prompt.</span>
           </h2>
 
           <p className="text-base max-w-xl mx-auto mb-8" style={{ color: "var(--text-muted)", lineHeight: "1.7" }}>
-            Enterprise procurement teams check this registry before signing AI vendor contracts.
-            First-mover advantage is real. Certification starts with a free TrustScan —
-            results in minutes, no commitment required.
+            AISeal is an independent AI security research project, built on personal time to
+            explore how third-party verification could work for AI systems. The scanner is free
+            to try: OWASP LLM Top 10 coverage, results in minutes.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/registry/apply"
+              href="/scan"
               className="px-8 py-4 rounded-md font-semibold text-base"
               style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
-              Apply for Certification
+              Run a Free Scan
             </Link>
             <Link
-              href="/scan"
+              href="/disclosure-vs-evidence"
               className="px-8 py-4 rounded-md font-semibold text-base"
               style={{
                 background: "transparent",
@@ -477,12 +477,12 @@ export default async function Home() {
                 textDecoration: "none",
               }}
             >
-              Run a Free Scan First
+              Read the Framework
             </Link>
           </div>
 
           <p className="text-xs mt-5" style={{ color: "var(--text-muted)" }}>
-            No commitment. No credit card. We&apos;ll review your application and reach out within 5 business days.
+            Research prototype. Nothing for sale.
           </p>
         </div>
       </section>

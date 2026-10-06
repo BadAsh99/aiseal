@@ -202,7 +202,7 @@ export default function DisclosureVsEvidencePage() {
           </h2>
           <p className="text-lg mb-8" style={{ color: "var(--text-secondary)" }}>
             Run a free TrustScan against your own AI to see how it scores against OWASP LLM Top 10.
-            If you&apos;re ready, apply for an ACF-1, ACF-2, or ACF-3 certification.
+            The ACF-1, ACF-2, and ACF-3 tiers are how the framework proposes grading that evidence.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
@@ -211,18 +211,6 @@ export default function DisclosureVsEvidencePage() {
               style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
               Run a free TrustScan →
-            </Link>
-            <Link
-              href="/registry/apply"
-              className="px-6 py-3 rounded-md text-sm font-semibold"
-              style={{
-                background: "transparent",
-                color: "var(--text-primary)",
-                border: "1px solid var(--border-mid)",
-                textDecoration: "none",
-              }}
-            >
-              Apply for certification
             </Link>
             <Link
               href="/registry"

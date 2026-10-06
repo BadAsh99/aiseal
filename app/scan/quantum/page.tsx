@@ -318,21 +318,21 @@ export default function QuantumScanPage() {
           }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#00c853", marginBottom: "0.25rem" }}>
-                Ready to certify your quantum posture?
+                How quantum-readiness tiers would work
               </div>
               <div style={{ fontSize: "0.78rem", color: "#555" }}>
-                AISeal QR-1 and QR-2 certifications go in the public registry — visible to enterprise buyers.
+                QR-1 and QR-2 are proposed tiers in the AISeal research framework.
               </div>
             </div>
             <Link
-              href="/registry/apply"
+              href="/disclosure-vs-evidence"
               style={{
                 padding: "0.5rem 1rem", background: "#00c853", color: "#000",
                 borderRadius: "4px", fontWeight: 700, fontSize: "0.8rem",
                 textDecoration: "none", whiteSpace: "nowrap",
               }}
             >
-              Apply →
+              Read the Framework →
             </Link>
           </div>
         </div>

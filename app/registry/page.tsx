@@ -71,11 +71,11 @@ export default async function RegistryPage() {
 
         <div className="flex flex-wrap gap-3 justify-center">
           <Link
-            href="/registry/apply"
+            href="/scan"
             className="px-5 py-2.5 rounded-md text-sm font-semibold"
             style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
           >
-            Apply for Certification
+            Run a Free Scan
           </Link>
           <a
             href="#registry"
@@ -195,28 +195,28 @@ export default async function RegistryPage() {
                 <path d="M9 12L11 14L15 10" stroke="#00c853" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#00c853" }}>
-                Get Certified
+                Try It
               </span>
             </div>
             <h3 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>
-              Your AI product should be here.
+              See how an AI system would score.
             </h3>
             <p className="text-sm max-w-md" style={{ color: "var(--text-muted)" }}>
-              Certification starts with a free TrustScan. We assess your AI against OWASP LLM Top 10,
-              deliver a scored report, and guide you to certification. First-mover advantage is real —
-              enterprise procurement teams check this registry.
+              The free TrustScan tests a system prompt against the OWASP LLM Top 10 and returns a
+              scored report. AISeal is an independent research project exploring how public,
+              third-party AI verification could work.
             </p>
           </div>
           <div className="flex flex-col gap-3 flex-shrink-0">
             <Link
-              href="/registry/apply"
+              href="/scan"
               className="px-6 py-3 rounded-md text-sm font-semibold text-center whitespace-nowrap"
               style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
-              Apply for Certification
+              Run a Free Scan
             </Link>
             <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
-              Results in minutes. No commitment.
+              Research prototype. Free to try.
             </p>
           </div>
         </div>

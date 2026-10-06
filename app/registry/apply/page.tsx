@@ -372,7 +372,7 @@ export default function RegistryApplyPage() {
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#00c853" }} />
-          Private Pilot Program — Limited Spots
+          Research Prototype
         </div>
 
         <h1

@@ -14,7 +14,6 @@ export default function Nav() {
     { href: "/scan/quantum", label: "QR Scan" },
     { href: "/registry", label: "Registry" },
     { href: "/monitor", label: "Monitor" },
-    { href: "/registry/apply", label: "Apply" },
   ];
 
   return (
@@ -54,9 +53,9 @@ export default function Nav() {
                 {link.label}
               </Link>
             ))}
-          {pathname !== "/registry/apply" && (
+          {pathname !== "/disclosure-vs-evidence" && (
             <Link
-              href="/registry/apply"
+              href="/disclosure-vs-evidence"
               className="text-sm font-medium px-4 py-2 rounded-md transition-colors"
               style={{
                 background: "#00c853",
@@ -64,7 +63,7 @@ export default function Nav() {
                 textDecoration: "none",
               }}
             >
-              Get Certified
+              Framework
             </Link>
           )}
         </div>
@@ -109,14 +108,14 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
-          {pathname !== "/registry/apply" && (
+          {pathname !== "/disclosure-vs-evidence" && (
             <Link
-              href="/registry/apply"
+              href="/disclosure-vs-evidence"
               onClick={() => setMobileOpen(false)}
               className="text-sm font-semibold py-2 px-3 rounded-md mt-1 text-center"
               style={{ background: "#00c853", color: "#000000", textDecoration: "none" }}
             >
-              Get Certified
+              Framework
             </Link>
           )}
         </div>
